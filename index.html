@@ -2,139 +2,182 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>番号札モード（スマホ用）</title>
 <style>
+  :root { padding-top: env(safe-area-inset-top, 0px); }
+  /* いつもの画面は元の番号札モードと同じ（番号・QR・戻る/次へ）。状態と番号の入力は、押したときだけ出るシート */
+  :root {
+    --bg: #ffffff;
+    --ink: #111111;
+    --muted: #888888;
+    --soft: #f2f2f2;
+    --line: #dddddd;
+    --accent: #f43f5e;
+    --dark: #555555;
+    --dim: rgba(0, 0, 0, 0.4);
+    color-scheme: light;
+  }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
   body {
-    margin: 0; padding: 0; background: #ffffff; font-family: 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
-    display: flex; flex-direction: column; height: 100vh; overflow: hidden; touch-action: none;
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
+    display: flex; flex-direction: column; overflow: hidden;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0;
   }
-  #setup {
-    position: fixed; inset: 0; background: #fff; z-index: 10;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px;
-  }
-  #setup.hidden { display: none; }
-  #setup h1 { font-size: 18px; color: #333; margin-bottom: 8px; }
-  #setup .row { display: flex; gap: 8px; align-items: center; }
-  #setup input {
-    font-size: 22px; padding: 12px; border: 2px solid #ccc; border-radius: 8px; text-align: center;
-  }
-  #setup input#prefixInput { width: 70px; }
-  #setup input#numInput { width: 120px; }
-  #setup button {
-    font-size: 18px; font-weight: bold; padding: 14px 28px; border: none; border-radius: 10px;
-    background: #f43f5e; color: white; margin-top: 12px;
-  }
-  #setup .hint { font-size: 12px; color: #999; max-width: 280px; text-align: center; }
+  button { font-family: inherit; color: var(--ink); cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-  #stage { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-  #textcol { flex: 0 0 auto; }
-  #mode-label { text-align: center; font-size: 12px; color: #999; padding-top: 14px; }
-  #progress { text-align: center; font-size: 13px; color: #888; padding-top: 2px; }
-  #number {
-    flex: 0 0 auto; text-align: center; font-size: 72px; font-weight: bold; color: #111;
-    padding: 6px 0 0;
-  }
-  #qrwrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
-  #qrcode { display: flex; align-items: center; justify-content: center; }
-  #qrcode img, #qrcode canvas, #qrcode table { width: 62vw !important; height: 62vw !important; max-width: 360px; max-height: 360px; }
+  /* ---- いつもの画面（撮影するところ） ---- */
+  #stage { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; touch-action: pan-y; }
+  #mode-label { font-size: 12px; color: var(--muted); padding-top: 14px; }
+  #progress { font-size: 13px; color: var(--muted); padding-top: 2px; }
+  #number { font-size: 72px; font-weight: bold; line-height: 1.05; padding-top: 6px; font-variant-numeric: tabular-nums; }
+  #meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding-top: 4px; }
+  #meta span { font-size: 17px; font-weight: bold; border: 2px solid var(--ink); border-radius: 6px; padding: 1px 8px; }
+  #qrwrap { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; padding: 8px 0; }
+  #qrcode img { display: block; width: 62vw; height: 62vw; max-width: 360px; max-height: 360px; image-rendering: pixelated; }
+  body.has-memo #qrwrap { flex: 0 0 auto; }
+  body.has-memo #qrcode img { width: 46vw; height: 46vw; max-width: 260px; max-height: 260px; }
+  #memo { flex: 1 1 auto; min-height: 0; width: 100%; overflow: hidden; text-align: center; font-size: 24px; font-weight: bold; line-height: 1.3; }
 
-  #jumpToggle {
-    display: block; margin: 0 auto; font-size: 12px; color: #777; background: #f5f5f5;
-    border: none; border-radius: 8px; padding: 8px 14px;
-  }
+  #subrow { display: flex; gap: 8px; padding-top: 6px; }
+  #stateBtn { flex: 2; font-size: 15px; font-weight: bold; background: var(--soft); border: none; border-radius: 10px; padding: 12px 0; }
+  #jumpToggle { flex: 1; font-size: 12px; color: #777777; background: var(--soft); border: none; border-radius: 10px; padding: 12px 0; }
+  #btnrow { display: flex; gap: 8px; padding: 10px 0 max(18px, env(safe-area-inset-bottom, 0px)); }
+  #btnrow button { flex: 1; font-size: 20px; font-weight: bold; padding: 18px 0; border: none; border-radius: 12px; }
+  #prevBtn { background: #eeeeee; }
+  #nextBtn { background: var(--accent); color: #ffffff !important; }
 
-  #jumpModal {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 20;
-    display: none; align-items: center; justify-content: center; padding: 24px;
-  }
-  #jumpModal.open { display: flex; }
-  #jumpModal .sheet {
-    background: white; border-radius: 14px; padding: 20px; width: 100%; max-width: 320px;
-  }
-  #jumpModal .sheet p { font-size: 13px; color: #777; margin: 0 0 12px; text-align: center; }
-  #jumpModal .row { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
-  #jumpModal input {
-    font-size: 18px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; text-align: center; background: white;
-  }
-  #jumpModalPrefix { width: 56px; }
-  #jumpModalNum { width: 100px; }
-  #jumpModal .btns { display: flex; gap: 8px; }
-  #jumpModal .btns button {
-    flex: 1; font-size: 15px; font-weight: bold; padding: 12px 0; border: none; border-radius: 8px;
-  }
-  #jumpCancelBtn { background: #eeeeee; color: #333; }
-  #jumpConfirmBtn { background: #555; color: white; }
+  /* ---- シート共通 ---- */
+  .overlay { position: fixed; inset: 0; z-index: 20; background: var(--dim); display: flex; }
+  .sheet { background: var(--bg); }
 
-  #btnrow { display: flex; gap: 8px; padding: 10px 16px 18px; }
-  #btnrow button {
-    flex: 1; font-size: 20px; font-weight: bold; padding: 18px 0; border: none; border-radius: 12px;
+  /* ---- 状態を入れるシート（下から） ---- */
+  #stateSheet { flex-direction: column; justify-content: flex-end; }
+  #stateSheet .sheet {
+    height: 78%; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; gap: 8px;
+    padding: 12px max(14px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
   }
-  #prevBtn { background: #eeeeee; color: #333; }
-  #nextBtn { background: #f43f5e; color: white; }
+  #preview { font-size: 15px; font-weight: bold; line-height: 1.35; min-height: 1.35em; max-height: 6em; overflow-y: auto; }
+  #preview .empty { color: var(--muted); font-weight: normal; font-size: 13px; }
+  #preview > div { padding: 2px 0; border-bottom: 1px dashed var(--line); }
+  #preview > div:last-child { border-bottom: none; }
+  #preview .nextln { color: var(--accent); font-weight: normal; font-size: 13px; }
+  #tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  #tools button { font-size: 14px; font-weight: bold; padding: 10px 0; border-radius: 8px; border: none; background: var(--soft); }
+  #sepBtn { background: var(--ink) !important; color: #ffffff !important; font-size: 18px !important; padding: 7px 0 !important; }
+  #clearBtn.arm { background: var(--accent) !important; color: #ffffff !important; }
+  .row { display: flex; gap: 6px; }
+  .row input { flex: 1; min-width: 0; font-size: 17px; font-family: inherit; padding: 9px; border: 1px solid #cccccc; border-radius: 8px; background: var(--bg); color: var(--ink); }
+  .row button { font-size: 15px; font-weight: bold; padding: 0 16px; border-radius: 8px; border: none; background: var(--dark); color: #ffffff; }
+  #tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 9px; padding: 3px; gap: 3px; }
+  #tabs button { border: none; background: transparent; font-size: 14px; font-weight: bold; padding: 8px 0; border-radius: 7px; color: var(--muted); }
+  #tabs button[aria-selected="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  #words { flex: 1; min-height: 0; overflow-y: auto; }
+  .sec h2 { font-size: 11px; font-weight: bold; color: var(--muted); letter-spacing: .08em; margin: 8px 2px 4px; }
+  .grid { display: grid; gap: 5px; grid-template-columns: repeat(4, 1fr); }
+  .grid.c3 { grid-template-columns: repeat(3, 1fr); }
+  .grid.c5 { grid-template-columns: repeat(5, 1fr); }
+  .grid button { min-height: 44px; font-size: 14px; font-weight: bold; line-height: 1.15; padding: 4px 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .grid.c5 button { font-size: 19px; }
+  .grid button:active, .grid button.flash, .grid button.on { background: var(--ink); color: #ffffff; border-color: var(--ink); }
+  #doneBtn { font-size: 18px; font-weight: bold; padding: 14px 0; border: none; border-radius: 12px; background: var(--accent); color: #ffffff; }
 
-  #resetlink { text-align: center; padding-bottom: 8px; }
-  #resetlink a { font-size: 12px; color: #aaa; text-decoration: underline; }
-
-  @media (orientation: landscape) {
-    #stage { flex-direction: row; align-items: center; justify-content: center; gap: 4vw; }
-    #textcol { display: flex; flex-direction: column; justify-content: center; order: 1; }
-    #mode-label, #progress { text-align: center; padding-top: 0; }
-    #number { font-size: 13vh; padding: 4px 0 0; }
-    #qrwrap { flex: 0 0 auto; order: 2; }
-    #qrcode img, #qrcode canvas, #qrcode table {
-      width: 70vh !important; height: 70vh !important; max-width: 42vw; max-height: 70vh;
-    }
-    #btnrow { padding: 6px 16px 10px; }
-    #btnrow button { padding: 10px 0; font-size: 16px; }
-    #resetlink { padding-bottom: 4px; }
-  }
+  /* ---- 番号を指定するシート（元の番号指定と同じ小さな窓） ---- */
+  #numModal { align-items: center; justify-content: center; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+  #numModal .sheet { border-radius: 14px; padding: 16px; width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px; }
+  #numModal p { font-size: 13px; color: #777777; margin: 0; text-align: center; }
+  .idline { display: flex; gap: 8px; align-items: stretch; }
+  #preChip { flex: 0 0 64px; border: 1px solid #cccccc; border-radius: 8px; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; padding: 3px 0; }
+  #preChip b { font-size: 22px; }
+  #preChip small { font-size: 10px; color: var(--muted); }
+  #preChip.on { background: var(--dark); border-color: var(--dark); color: #ffffff; }
+  #preChip.on small { color: #ffffff; }
+  #idShow { flex: 1; border: 1px solid #cccccc; border-radius: 8px; text-align: center; font-size: 30px; font-weight: bold; padding: 6px 0; font-variant-numeric: tabular-nums; }
+  #idNum.ph { color: #cccccc; }
+  .kp { display: grid; gap: 6px; }
+  .kp button { font-weight: bold; border: none; border-radius: 8px; background: var(--soft); }
+  .kp button:active, .kp button.on { background: var(--dark); color: #ffffff; }
+  #digits { grid-template-columns: repeat(3, 1fr); }
+  #digits button { height: 46px; font-size: 22px; }
+  #digits button.small { font-size: 13px; color: #777777; }
+  #letters { grid-template-columns: repeat(7, 1fr); }
+  #letters button { height: 40px; font-size: 17px; }
+  #numModal .btns { display: flex; gap: 8px; }
+  #numModal .btns button { flex: 1; font-size: 15px; font-weight: bold; padding: 12px 0; border: none; border-radius: 8px; }
+  #cancelNum { background: #eeeeee; }
+  #setNum { background: var(--dark); color: #ffffff !important; }
+  #setNum:disabled { background: #cccccc; }
+  #resetBtn { align-self: center; font-size: 11px; background: none; border: none; color: #aaaaaa; text-decoration: underline; }
+  #resetBtn.arm { color: var(--accent); font-weight: bold; }
 </style>
 </head>
 <body>
 
-<div id="setup">
-  <h1>番号札モード（スマホ用・単独動作）</h1>
-  <div class="row">
-    <input id="prefixInput" type="text" maxlength="3" placeholder="B" autocapitalize="characters">
-    <input id="numInput" type="number" placeholder="1">
-  </div>
-  <button id="startBtn">開始</button>
-  <div class="hint">記号（アルファベット）と開始番号を入力して開始します。前回の続きが自動で保存されていればそこから始まります。</div>
-</div>
-
 <div id="stage">
-  <div id="textcol">
-    <div id="mode-label"></div>
-    <div id="progress"></div>
-    <div id="number"></div>
-  </div>
+  <div id="mode-label">番号札モード（スマホ単独）</div>
+  <div id="progress"></div>
+  <div id="number"></div>
+  <div id="meta"></div>
   <div id="qrwrap"><div id="qrcode"></div></div>
+  <div id="memo"></div>
 </div>
 
-<button id="jumpToggle">番号を直接指定する</button>
-
+<div id="subrow">
+  <button id="stateBtn">状態を入れる</button>
+  <button id="jumpToggle">番号を指定</button>
+</div>
 <div id="btnrow">
   <button id="prevBtn">← 戻る</button>
   <button id="nextBtn">次へ →</button>
 </div>
 
-<div id="jumpModal">
+<div id="stateSheet" class="overlay" hidden>
   <div class="sheet">
-    <p>番号を直接指定して進める</p>
-    <div class="row">
-      <input id="jumpModalPrefix" type="text" maxlength="3" autocapitalize="characters" placeholder="B">
-      <input id="jumpModalNum" type="number" inputmode="numeric" placeholder="1〜9999">
+    <div id="preview"></div>
+    <div id="tools">
+      <button id="sepBtn" title="次の項目へ（改行）">／</button>
+      <button id="undoBtn">1つ消す</button>
+      <button id="textBtn">文字</button>
+      <button id="clearBtn">全消し</button>
     </div>
-    <div class="btns">
-      <button id="jumpCancelBtn">キャンセル</button>
-      <button id="jumpConfirmBtn">設定</button>
+    <div class="row" id="textRow" hidden>
+      <input id="freeText" type="text" placeholder="自由に入力（音声入力も可）" enterkeyhint="done">
+      <button id="freeAdd">追加</button>
     </div>
+    <div id="tabs" role="tablist">
+      <button id="tabBack" role="tab" aria-selected="true">状態</button>
+      <button id="tabFront" role="tab" aria-selected="false">型式・倉庫・サイズ</button>
+    </div>
+    <div id="words">
+      <div id="paneBack"></div>
+      <div id="paneFront" hidden></div>
+    </div>
+    <button id="doneBtn">できた（撮影へ）</button>
   </div>
 </div>
 
-<div id="resetlink"><a id="resetA" href="#">記号・開始番号をリセットする</a></div>
+<div id="numModal" class="overlay" hidden>
+  <div class="sheet">
+    <p id="numTitle">番号を直接指定して進める</p>
+    <div class="idline">
+      <button id="preChip" aria-label="記号を変える"><small>記号</small><b id="preChipVal">C</b><small>変える</small></button>
+      <div id="idShow" aria-live="polite"><span id="idPre">C</span><span id="idNum"></span></div>
+    </div>
+    <div id="digits" class="kp" aria-label="番号"></div>
+    <div id="letters" class="kp" aria-label="記号" hidden></div>
+    <div class="btns">
+      <button id="cancelNum">キャンセル</button>
+      <button id="setNum" disabled>設定</button>
+    </div>
+    <button id="resetBtn" hidden>入力した控えを全部消して最初から</button>
+  </div>
+</div>
 
 <script>
 //---------------------------------------------------------------------
@@ -2435,156 +2478,374 @@ var qrcode = function() {
     return qrcode;
 }));
 
+
 </script>
 <script>
-(function() {
-  var MAX_NUMBER = 9999;
-  var STORAGE_KEY = "banGoFuda_state_v1";
+(function () {
+  var KEY = 'banGoFuda_memo_v1', PRE_KEY = 'banGoFuda_memo_prefix', MAX = 9999, KEEP = 400;
+  var OLD_KEY = 'banGoFuda_state_v1';  // 状態メモ前の番号札モード。初回だけ番号の続きを引き継ぐ（消さずに残す）
+
+  // ラミネート表（表）
+  var MODELS = ['ZN6','ZC6','KY51','GGH20','BRM','YA9','L33','KB1','KB2','NB8C','CZ4A','GDA',
+                'DC5','NA8C','VCH10','SH9','CL1','ACR30','ZRE152','YAM','BMM','CM2','CKV36','CP3'];
+  var WH = ['ア','イ','ウ','エ','オ','カ','キ','ク','ケ','コ','サ','シ','ス',
+            'セ','ソ','タ','チ','ツ','テ','ト','ナ','ニ','ヌ','ネ','ノ'];
+  var SIZES = ['60(B)','80(C)','100(D)','120(E)','140(F)','160(G)','180(H)','200(I)','220(J)',
+               '240(K)','260(L)','チャーター260〜300','チャーター300〜340'];
+  // ラミネート表（裏）。列ごとにまとめ、重複（カプラー・戻り悪い・ひび割れ）は1つに
+  var GROUPS = [
+    { name: '位置', words: ['右','左','前','後','左右','上側','下側','右側','左側','裏側','前期','後期'] },
+    { name: '部位', words: ['ステー','クリップ','カプラー','ネジ','ピン','シャフト','ブーツ','レザー','バルブ','フチ','ハンガー','ガスケット','シート'] },
+    { name: '傷み', words: ['サビ','劣化','塗装','断線','メッキ','擦れ','はがれ','色落ち','凹み','破れ','ひび割れ','切れ','折れ','へたり','なめ','ほつれ','歪み','テープ痕','曲がり','補修痕','日焼け','ガリ傷','えぐれ','つぶれ','漏れ','角減り'] },
+    { name: '動き・中身', words: ['中からサラサラ','中から水の音','金属音','抜け','戻り悪い','ゆっくり戻る','欠品','フィルム','映り悪い','カラーNo','別色付き','溶接痕','ステッカー'] },
+    { name: 'その他', words: ['丸めて保管','カメラの状態','ゴムの状態','付属品は写真で全て','オイル','内部','水分','動作確認','社外','加工','穴','ジャンク','付属'] },
+    { name: '判定', words: ['OK','×','？','不明','全て','おまけ','サイズ違い','深リム'] }
+  ];
+  var SEP = '／';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var S = null;
+
+  function load() {
+    try {
+      var r = localStorage.getItem(KEY);
+      if (r) return JSON.parse(r);
+      var o = localStorage.getItem(OLD_KEY);
+      if (o) {
+        o = JSON.parse(o);
+        if (o && o.generated && o.generated.length) {
+          return { prefix: o.prefix, nextNum: o.nextNum, generated: o.generated, idx: o.idx, memos: {}, custom: [] };
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function buzz() { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} }
 
   function incrementId(prefix, num) {
     num += 1;
-    if (num > MAX_NUMBER) {
+    if (num > MAX) {
       num = 1;
-      if (!prefix) { prefix = "B"; }
-      else if (prefix.slice(-1) === "Z") { prefix = prefix + "A"; }
-      else { prefix = prefix.slice(0, -1) + String.fromCharCode(prefix.charCodeAt(prefix.length-1) + 1); }
+      if (!prefix) prefix = 'B';
+      else if (prefix.slice(-1) === 'Z') prefix = prefix + 'A';
+      else prefix = prefix.slice(0, -1) + String.fromCharCode(prefix.charCodeAt(prefix.length - 1) + 1);
     }
     return [prefix, num];
   }
 
-  function loadState() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch(e) {}
-    return null;
-  }
-  function saveState(state) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  function cur() { return S.generated[S.idx]; }
+  function memo(id) {
+    if (!S.memos[id]) S.memos[id] = { model: '', wh: '', size: '', tokens: [] };
+    return S.memos[id];
   }
 
-  var setupEl = document.getElementById("setup");
-  var modeLabelEl = document.getElementById("mode-label");
-  var progressEl = document.getElementById("progress");
-  var numberEl = document.getElementById("number");
-  var qrEl = document.getElementById("qrcode");
+  // 新しい番号を足す。型式・倉庫は直前の番号から引き継ぐ
+  function pushId(p, n) {
+    var id = p + n;
+    var prev = S.generated.length ? memo(cur()) : null;
+    var isNew = !S.memos[id];
+    S.generated.push(id);
+    S.idx = S.generated.length - 1;
+    var m = memo(id);
+    if (isNew && prev) { m.model = prev.model; m.wh = prev.wh; }
+    var r = incrementId(p, n);
+    S.prefix = r[0]; S.nextNum = r[1];
+    trim();
+  }
+  function trim() {
+    if (S.generated.length <= KEEP) return;
+    var cut = S.generated.length - KEEP;
+    S.generated = S.generated.slice(cut);
+    S.idx = Math.max(0, S.idx - cut);
+    var live = {};
+    S.generated.forEach(function (id) { live[id] = 1; });
+    Object.keys(S.memos).forEach(function (id) { if (!live[id]) delete S.memos[id]; });
+  }
 
-  var state = loadState();
-  var generated, idx, prefix, nextNum;
-
+  // ---- 描画 ----
   function renderQR(text) {
-    qrEl.innerHTML = "";
-    var qr = qrcode(0, "M");
+    var qr = qrcode(0, 'M');
     qr.addData(text);
     qr.make();
-    qrEl.innerHTML = qr.createImgTag(6, 8);
+    $('qrcode').innerHTML = qr.createImgTag(6, 8);
+  }
+
+  function lines(tokens) {
+    var out = [[]];
+    tokens.forEach(function (t) { if (t === SEP) out.push([]); else out[out.length - 1].push(t); });
+    return out.filter(function (l) { return l.length; }).map(function (l) { return l.join(' '); });
+  }
+  function fillLines(el, ls) {
+    el.innerHTML = '';
+    ls.forEach(function (t) { var d = document.createElement('div'); d.textContent = t; el.appendChild(d); });
   }
 
   function render() {
-    var num = generated[idx];
-    numberEl.textContent = num;
-    var tail = (idx === generated.length - 1) ? "（最新）" : "";
-    progressEl.textContent = (idx+1) + " / " + generated.length + tail;
-    modeLabelEl.textContent = "番号札モード（スマホ単独）";
-    renderQR(num);
-    saveState({ generated: generated, idx: idx, prefix: prefix, nextNum: nextNum });
+    var id = cur(), m = memo(id);
+    $('number').textContent = id;
+    $('progress').textContent = (S.idx + 1) + ' / ' + S.generated.length + (S.idx === S.generated.length - 1 ? '（最新）' : '');
+    renderQR(id);
+
+    var meta = $('meta');
+    meta.innerHTML = '';
+    [m.model, m.wh ? '倉庫' + m.wh : '', m.size].forEach(function (t) {
+      if (!t) return;
+      var s = document.createElement('span'); s.textContent = t; meta.appendChild(s);
+    });
+
+    var ls = lines(m.tokens);
+    document.body.classList.toggle('has-memo', ls.length > 0);
+    fillLines($('memo'), ls);
+    fit();
+    $('stateBtn').textContent = ls.length ? '状態を直す（' + ls.length + '行）' : '状態を入れる';
+
+    var pv = $('preview');
+    if (ls.length) {
+      fillLines(pv, ls);
+      // 「／」を押した直後は、改行されたことが分かるように空の次の行を見せる（撮影画面には出さない）
+      if (m.tokens[m.tokens.length - 1] === SEP) {
+        var nx = document.createElement('div'); nx.className = 'nextln';
+        nx.textContent = '▸ ' + (ls.length + 1) + '行目（ここから次の項目）';
+        pv.appendChild(nx);
+      }
+    } else pv.innerHTML = '<div class="empty">押した順に並びます。「／」で次の項目へ。</div>';
+    pv.scrollTop = pv.scrollHeight;
+
+    document.querySelectorAll('[data-kind]').forEach(function (b) {
+      b.classList.toggle('on', m[b.dataset.kind] === b.dataset.val);
+    });
+    save();
   }
 
+  // 書いた量が多いときは、画面からはみ出さないよう文字を小さくする
+  function fit() {
+    var el = $('memo'), fs = 30;
+    el.style.fontSize = fs + 'px';
+    while (el.scrollHeight > el.clientHeight + 1 && fs > 12) { fs -= 1; el.style.fontSize = fs + 'px'; }
+  }
+
+  // ---- 状態を入れるシート ----
+  function makeGrid(words, cls, onTap, kind) {
+    var g = document.createElement('div');
+    g.className = 'grid' + (cls ? ' ' + cls : '');
+    words.forEach(function (w) {
+      var b = document.createElement('button');
+      b.textContent = w;
+      if (kind) { b.dataset.kind = kind; b.dataset.val = w; }
+      b.addEventListener('click', function () { buzz(); onTap(w, b); });
+      g.appendChild(b);
+    });
+    return g;
+  }
+  function section(title, grid) {
+    var s = document.createElement('div'); s.className = 'sec';
+    var h = document.createElement('h2'); h.textContent = title;
+    s.appendChild(h); s.appendChild(grid);
+    return s;
+  }
+  function addToken(w, b) {
+    memo(cur()).tokens.push(w);
+    if (b) { b.classList.add('flash'); setTimeout(function () { b.classList.remove('flash'); }, 140); }
+    render();
+  }
+  function pick(kind) {
+    return function (w) {
+      var m = memo(cur());
+      m[kind] = (m[kind] === w) ? '' : w;
+      render();
+    };
+  }
+
+  function buildPanels() {
+    var back = $('paneBack');
+    GROUPS.forEach(function (g) { back.appendChild(section(g.name, makeGrid(g.words, '', addToken))); });
+
+    var front = $('paneFront');
+    var models = MODELS.concat(S.custom || []);
+    var mSec = section('型式（次の番号へ引き継ぎ）', makeGrid(models, '', pick('model'), 'model'));
+    var addRow = document.createElement('div'); addRow.className = 'row'; addRow.style.marginTop = '6px';
+    addRow.innerHTML = '<input id="newModel" type="text" placeholder="型式を追加（例 ZD8）" autocapitalize="characters"><button id="newModelBtn">追加</button>';
+    mSec.appendChild(addRow);
+    front.appendChild(mSec);
+    front.appendChild(section('倉庫（次の番号へ引き継ぎ）', makeGrid(WH, 'c5', pick('wh'), 'wh')));
+    front.appendChild(section('サイズ', makeGrid(SIZES, 'c3', pick('size'), 'size')));
+
+    $('newModelBtn').addEventListener('click', function () {
+      var v = $('newModel').value.trim().toUpperCase();
+      if (!v) return;
+      S.custom = S.custom || [];
+      if (MODELS.indexOf(v) < 0 && S.custom.indexOf(v) < 0) S.custom.push(v);
+      memo(cur()).model = v;
+      $('newModel').value = '';
+      rebuild();
+    });
+  }
+  function rebuild() {
+    $('paneBack').innerHTML = ''; $('paneFront').innerHTML = '';
+    buildPanels(); render();
+  }
+
+  function showTab(front) {
+    $('paneFront').hidden = !front; $('paneBack').hidden = front;
+    $('tabFront').setAttribute('aria-selected', front); $('tabBack').setAttribute('aria-selected', !front);
+    $('words').scrollTop = 0;
+  }
+  $('tabBack').addEventListener('click', function () { showTab(false); });
+  $('tabFront').addEventListener('click', function () { showTab(true); });
+
+  $('stateBtn').addEventListener('click', function () { $('stateSheet').hidden = false; });
+  $('doneBtn').addEventListener('click', function () { $('stateSheet').hidden = true; $('textRow').hidden = true; fit(); });
+  $('stateSheet').addEventListener('click', function (e) { if (e.target === this) $('doneBtn').click(); });
+
+  $('sepBtn').addEventListener('click', function () {
+    var t = memo(cur()).tokens;
+    if (t.length && t[t.length - 1] !== SEP) { t.push(SEP); buzz(); render(); }
+  });
+  $('undoBtn').addEventListener('click', function () { memo(cur()).tokens.pop(); buzz(); render(); });
+  $('textBtn').addEventListener('click', function () {
+    var row = $('textRow'); row.hidden = !row.hidden;
+    if (!row.hidden) $('freeText').focus();
+  });
+  function addFree() {
+    var v = $('freeText').value.trim();
+    if (!v) return;
+    addToken(v);
+    $('freeText').value = '';
+  }
+  $('freeAdd').addEventListener('click', addFree);
+  $('freeText').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addFree(); } });
+
+  // 全消しは2回押し（1回目で赤くなる）
+  var clearTimer = null;
+  $('clearBtn').addEventListener('click', function () {
+    var b = $('clearBtn');
+    if (!b.classList.contains('arm')) {
+      b.classList.add('arm'); b.textContent = 'もう一度';
+      clearTimer = setTimeout(function () { b.classList.remove('arm'); b.textContent = '全消し'; }, 2500);
+      return;
+    }
+    clearTimeout(clearTimer);
+    b.classList.remove('arm'); b.textContent = '全消し';
+    var m = memo(cur()); m.tokens = []; m.size = '';
+    render();
+  });
+
+  // ---- 番号の移動 ----
   function goNext() {
-    if (idx < generated.length - 1) {
-      idx += 1;
-    } else {
-      var newNum = prefix + nextNum;
-      generated.push(newNum);
-      var r = incrementId(prefix, nextNum);
-      prefix = r[0]; nextNum = r[1];
-      idx += 1;
+    if (S.idx < S.generated.length - 1) S.idx += 1;
+    else pushId(S.prefix, S.nextNum);
+    render();
+  }
+  function goPrev() { if (S.idx > 0) { S.idx -= 1; render(); } }
+  $('nextBtn').addEventListener('click', goNext);
+  $('prevBtn').addEventListener('click', goPrev);
+
+  // 左右にはらうと次へ／戻る（元の番号札モードと同じ）
+  var px = null, py = null;
+  $('stage').addEventListener('pointerdown', function (e) { px = e.clientX; py = e.clientY; });
+  $('stage').addEventListener('pointerup', function (e) {
+    if (px === null) return;
+    var dx = e.clientX - px, dy = e.clientY - py;
+    px = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? goNext() : goPrev(); }
+  });
+  $('stage').addEventListener('pointercancel', function () { px = null; });
+
+  // ---- 番号を指定（記号は9999まで変わらないので、ふだんは数字だけ） ----
+  var draftP = 'C', draftN = '', pickMode = false;
+  try { draftP = localStorage.getItem(PRE_KEY) || draftP; } catch (e) {}
+  function drawDraft() {
+    $('idPre').textContent = draftP;
+    $('preChipVal').textContent = draftP;
+    $('idNum').textContent = draftN || '0000';
+    $('idNum').classList.toggle('ph', !draftN);
+    $('preChip').classList.toggle('on', pickMode);
+    $('letters').hidden = !pickMode;
+    $('digits').hidden = pickMode;
+    document.querySelectorAll('#letters [data-l]').forEach(function (b) {
+      b.classList.toggle('on', draftP === b.dataset.l);
+    });
+    $('setNum').disabled = pickMode || !draftN;
+  }
+  (function buildKeys() {
+    var L = $('letters');
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(function (c) {
+      var b = document.createElement('button'); b.textContent = c; b.dataset.l = c;
+      b.addEventListener('click', function () { buzz(); draftP = c; pickMode = false; drawDraft(); });
+      L.appendChild(b);
+    });
+    $('preChip').addEventListener('click', function () { buzz(); pickMode = !pickMode; drawDraft(); });
+
+    var D = $('digits');
+    ['1','2','3','4','5','6','7','8','9','1つ消す','0','クリア'].forEach(function (k) {
+      var b = document.createElement('button'); b.textContent = k;
+      if (k.length > 1) b.className = 'small';
+      b.addEventListener('click', function () {
+        buzz();
+        if (k === '1つ消す') draftN = draftN.slice(0, -1);
+        else if (k === 'クリア') draftN = '';
+        else if (draftN.length < 4 && !(draftN === '' && k === '0')) draftN += k;
+        drawDraft();
+      });
+      D.appendChild(b);
+    });
+  })();
+
+  function openNum(jump) {
+    $('numModal').hidden = false;
+    $('cancelNum').hidden = !jump;
+    $('resetBtn').hidden = !jump;
+    $('numTitle').textContent = jump ? '番号を直接指定して進める' : '記号と開始番号を入れてください';
+    if (jump && S) draftP = S.prefix;
+    draftN = ''; pickMode = false;
+    drawDraft();
+  }
+  $('jumpToggle').addEventListener('click', function () { openNum(true); });
+  $('cancelNum').addEventListener('click', function () { $('numModal').hidden = true; });
+  $('setNum').addEventListener('click', function () {
+    var p = draftP, n = parseInt(draftN, 10);
+    if (!/^[A-Z]{1,3}$/.test(p) || !(n >= 1 && n <= MAX)) return;
+    try { localStorage.setItem(PRE_KEY, p); } catch (e) {}
+    if (!S) { S = { prefix: p, nextNum: n, generated: [], idx: -1, memos: {}, custom: [] }; buildPanels(); }
+    pushId(p, n);
+    $('numModal').hidden = true;
+    render();
+    keepAwake();
+  });
+  var resetTimer = null;
+  $('resetBtn').addEventListener('click', function () {
+    var b = $('resetBtn');
+    if (!b.classList.contains('arm')) {
+      b.classList.add('arm'); b.textContent = 'もう一度押すと全部消えます';
+      resetTimer = setTimeout(function () { b.classList.remove('arm'); b.textContent = '入力した控えを全部消して最初から'; }, 3000);
+      return;
     }
-    render();
-  }
-
-  function goPrev() {
-    if (idx > 0) { idx -= 1; render(); }
-  }
-
-  function doJump() {
-    var p = document.getElementById("jumpModalPrefix").value.trim().toUpperCase();
-    var n = parseInt(document.getElementById("jumpModalNum").value, 10);
-    if (!p || !/^[A-Z]+$/.test(p)) { alert("記号にはアルファベットを入力してください"); return; }
-    if (!n || n < 1 || n > MAX_NUMBER) { alert("番号は1〜" + MAX_NUMBER + "で入力してください"); return; }
-    generated.push(p + n);
-    var r = incrementId(p, n);
-    prefix = r[0]; nextNum = r[1];
-    idx = generated.length - 1;
-    document.getElementById("jumpModalNum").value = "";
-    closeJumpModal();
-    render();
-  }
-
-  function openJumpModal() {
-    document.activeElement && document.activeElement.blur();
-    document.getElementById("jumpModal").classList.add("open");
-  }
-  function closeJumpModal() {
-    document.getElementById("jumpModalPrefix").blur();
-    document.getElementById("jumpModalNum").blur();
-    document.getElementById("jumpModal").classList.remove("open");
-  }
-
-  function startFresh(p, n) {
-    prefix = p; nextNum = n;
-    generated = [p + n];
-    var r = incrementId(p, n);
-    prefix = r[0]; nextNum = r[1];
-    idx = 0;
-    setupEl.classList.add("hidden");
-    render();
-  }
-
-  document.getElementById("startBtn").addEventListener("click", function() {
-    var p = (document.getElementById("prefixInput").value.trim() || "B").toUpperCase();
-    var n = parseInt(document.getElementById("numInput").value, 10) || 1;
-    if (n > MAX_NUMBER) n = MAX_NUMBER;
-    startFresh(p, n);
+    clearTimeout(resetTimer);
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    location.reload();
   });
 
-  document.getElementById("nextBtn").addEventListener("click", goNext);
-  document.getElementById("prevBtn").addEventListener("click", goPrev);
-  document.getElementById("jumpToggle").addEventListener("click", openJumpModal);
-  document.getElementById("jumpConfirmBtn").addEventListener("click", doJump);
-  document.getElementById("jumpCancelBtn").addEventListener("click", closeJumpModal);
+  // 撮影中に画面が消えないように（使えない環境では何もしない）
+  var lock = null;
+  function keepAwake() {
+    try {
+      if (navigator.wakeLock && !lock) navigator.wakeLock.request('screen').then(function (l) {
+        lock = l; l.addEventListener('release', function () { lock = null; });
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && S) keepAwake(); });
+  window.addEventListener('resize', function () { if (S) fit(); });
 
-  document.getElementById("resetA").addEventListener("click", function(e) {
-    e.preventDefault();
-    if (confirm("記号・番号の続きをリセットして最初の設定画面に戻りますか？")) {
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload();
-    }
-  });
-
-  // スワイプ対応（左右フリックで次へ/戻る。モーダル表示中は無効）
-  var touchStartX = null;
-  document.body.addEventListener("touchstart", function(e) {
-    if (document.getElementById("jumpModal").classList.contains("open")) { touchStartX = null; return; }
-    touchStartX = e.touches[0].clientX;
-  });
-  document.body.addEventListener("touchend", function(e) {
-    if (touchStartX === null) return;
-    var dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dx) > 60) {
-      if (dx < 0) goNext(); else goPrev();
-    }
-    touchStartX = null;
-  });
-
-  // 初期化：保存済みの続きがあれば復元
-  if (state && state.generated && state.generated.length) {
-    generated = state.generated;
-    idx = state.idx;
-    prefix = state.prefix;
-    nextNum = state.nextNum;
-    setupEl.classList.add("hidden");
-    render();
+  // ---- 起動 ----
+  S = load();
+  if (S && S.generated && S.generated.length) {
+    S.memos = S.memos || {};
+    buildPanels(); render(); keepAwake();
+  } else {
+    S = null;
+    openNum(false);
   }
 })();
 </script>
