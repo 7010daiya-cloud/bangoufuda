@@ -47,6 +47,7 @@
 
   #subrow { display: flex; gap: 8px; padding-top: 6px; }
   #stateBtn { flex: 2; font-size: 15px; font-weight: bold; background: var(--soft); border: none; border-radius: 10px; padding: 12px 0; }
+  #setBtn { flex: 0 0 64px; font-size: 12px; color: #777777; background: var(--soft); border: none; border-radius: 10px; padding: 12px 0; }
   #jumpToggle { flex: 1; font-size: 12px; color: #777777; background: var(--soft); border: none; border-radius: 10px; padding: 12px 0; }
   #btnrow { display: flex; gap: 8px; padding: 10px 0 max(18px, env(safe-area-inset-bottom, 0px)); }
   #btnrow button { flex: 1; font-size: 20px; font-weight: bold; padding: 18px 0; border: none; border-radius: 12px; }
@@ -70,14 +71,14 @@
   #preview .nextln { color: var(--accent); font-weight: normal; font-size: 13px; }
   #tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
   #tools button { font-size: 14px; font-weight: bold; padding: 10px 0; border-radius: 8px; border: none; background: var(--soft); }
-  #sepBtn { background: var(--ink) !important; color: #ffffff !important; font-size: 18px !important; padding: 7px 0 !important; }
+  #sepBtn { background: var(--ink) !important; color: #ffffff !important; }
   #clearBtn.arm { background: var(--accent) !important; color: #ffffff !important; }
   .row { display: flex; gap: 6px; }
   .row input { flex: 1; min-width: 0; font-size: 17px; font-family: inherit; padding: 9px; border: 1px solid #cccccc; border-radius: 8px; background: var(--bg); color: var(--ink); }
   .row button { font-size: 15px; font-weight: bold; padding: 0 16px; border-radius: 8px; border: none; background: var(--dark); color: #ffffff; }
-  #tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 9px; padding: 3px; gap: 3px; }
-  #tabs button { border: none; background: transparent; font-size: 14px; font-weight: bold; padding: 8px 0; border-radius: 7px; color: var(--muted); }
-  #tabs button[aria-selected="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 9px; padding: 3px; gap: 3px; }
+  .seg button { border: none; background: transparent; font-size: 14px; font-weight: bold; padding: 8px 0; border-radius: 7px; color: var(--muted); }
+  .seg button[aria-selected="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
   #words { flex: 1; min-height: 0; overflow-y: auto; }
   .sec h2 { font-size: 11px; font-weight: bold; color: var(--muted); letter-spacing: .08em; margin: 8px 2px 4px; }
   .grid { display: grid; gap: 5px; grid-template-columns: repeat(4, 1fr); }
@@ -113,6 +114,27 @@
   #cancelNum { background: #eeeeee; }
   #setNum { background: var(--dark); color: #ffffff !important; }
   #setNum:disabled { background: #cccccc; }
+  /* ---- 設定画面（入力とは別の画面） ---- */
+  #settings {
+    position: fixed; inset: 0; z-index: 30; background: var(--bg); display: flex; flex-direction: column; gap: 8px;
+    padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+  }
+  .sethead { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; }
+  .sethead h1 { font-size: 18px; margin: 0; }
+  #setClose { font-size: 15px; font-weight: bold; background: var(--accent); color: #ffffff; border: none; border-radius: 8px; padding: 10px 18px; }
+  #setBody { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+  .setnote { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 4px 2px 0; }
+  .wl { display: flex; flex-direction: column; gap: 4px; }
+  .wrow { display: flex; gap: 4px; align-items: center; }
+  .wrow span { flex: 1; min-width: 0; font-size: 15px; font-weight: bold; padding: 9px 10px; background: var(--soft); border-radius: 8px; overflow-wrap: anywhere; }
+  .wrow button { flex: 0 0 42px; height: 38px; border: none; border-radius: 8px; background: var(--soft); font-size: 15px; font-weight: bold; }
+  .wrow button:disabled { opacity: .3; }
+  .wrow button.del { color: #777777; }
+  .wrow button.del.arm { flex-basis: 64px; background: var(--accent); color: #ffffff; font-size: 13px; }
+  #setBody .row { margin-top: 6px; }
+  #resetWords { display: block; margin: 18px auto 0; font-size: 12px; background: none; border: none; color: #aaaaaa; text-decoration: underline; }
+  #resetWords.arm { color: var(--accent); font-weight: bold; }
+
   #resetBtn { align-self: center; font-size: 11px; background: none; border: none; color: #aaaaaa; text-decoration: underline; }
   #resetBtn.arm { color: var(--accent); font-weight: bold; }
 </style>
@@ -131,6 +153,7 @@
 <div id="subrow">
   <button id="stateBtn">状態を入れる</button>
   <button id="jumpToggle">番号を指定</button>
+  <button id="setBtn">設定</button>
 </div>
 <div id="btnrow">
   <button id="prevBtn">← 戻る</button>
@@ -141,7 +164,7 @@
   <div class="sheet">
     <div id="preview"></div>
     <div id="tools">
-      <button id="sepBtn" title="次の項目へ（改行）">／</button>
+      <button id="sepBtn" title="次の行へ">改行 ↵</button>
       <button id="undoBtn">1つ消す</button>
       <button id="textBtn">文字</button>
       <button id="clearBtn">全消し</button>
@@ -150,7 +173,7 @@
       <input id="freeText" type="text" placeholder="自由に入力（音声入力も可）" enterkeyhint="done">
       <button id="freeAdd">追加</button>
     </div>
-    <div id="tabs" role="tablist">
+    <div id="tabs" class="seg" role="tablist">
       <button id="tabBack" role="tab" aria-selected="true">状態</button>
       <button id="tabFront" role="tab" aria-selected="false">型式・倉庫・サイズ</button>
     </div>
@@ -177,6 +200,18 @@
     </div>
     <button id="resetBtn" hidden>入力した控えを全部消して最初から</button>
   </div>
+</div>
+
+<div id="settings" hidden>
+  <div class="sethead">
+    <h1>設定</h1>
+    <button id="setClose">閉じる</button>
+  </div>
+  <div class="seg" role="tablist">
+    <button id="setTabWords" role="tab" aria-selected="true">状態の言葉</button>
+    <button id="setTabModels" role="tab" aria-selected="false">型式</button>
+  </div>
+  <div id="setBody"></div>
 </div>
 
 <script>
@@ -2506,6 +2541,20 @@ var qrcode = function() {
   var $ = function (id) { return document.getElementById(id); };
   var S = null;
 
+  // 言葉と型式の一覧は設定画面で変えられる。番号の控えとは別に保存（控えを消しても残る）
+  var WORDS_KEY = 'banGoFuda_memo_words';
+  function defaultGroups() { return GROUPS.map(function (g) { return { name: g.name, words: g.words.slice() }; }); }
+  function loadWords() {
+    try {
+      var w = JSON.parse(localStorage.getItem(WORDS_KEY) || 'null');
+      if (w && w.groups && w.models) return w;
+    } catch (e) {}
+    return { groups: defaultGroups(), models: MODELS.slice() };
+  }
+  function saveWords() { try { localStorage.setItem(WORDS_KEY, JSON.stringify(W)); } catch (e) {} }
+  function sortedModels() { return W.models.slice().sort(function (a, b) { return a.localeCompare(b, 'en', { numeric: true }); }); }
+  var W = loadWords();
+
   function load() {
     try {
       var r = localStorage.getItem(KEY);
@@ -2603,13 +2652,13 @@ var qrcode = function() {
     var pv = $('preview');
     if (ls.length) {
       fillLines(pv, ls);
-      // 「／」を押した直後は、改行されたことが分かるように空の次の行を見せる（撮影画面には出さない）
+      // 「改行」を押した直後は、改行されたことが分かるように空の次の行を見せる（撮影画面には出さない）
       if (m.tokens[m.tokens.length - 1] === SEP) {
         var nx = document.createElement('div'); nx.className = 'nextln';
         nx.textContent = '▸ ' + (ls.length + 1) + '行目（ここから次の項目）';
         pv.appendChild(nx);
       }
-    } else pv.innerHTML = '<div class="empty">押した順に並びます。「／」で次の項目へ。</div>';
+    } else pv.innerHTML = '<div class="empty">押した順に並びます。「改行」で次の行へ。</div>';
     pv.scrollTop = pv.scrollHeight;
 
     document.querySelectorAll('[data-kind]').forEach(function (b) {
@@ -2659,32 +2708,107 @@ var qrcode = function() {
 
   function buildPanels() {
     var back = $('paneBack');
-    GROUPS.forEach(function (g) { back.appendChild(section(g.name, makeGrid(g.words, '', addToken))); });
+    W.groups.forEach(function (g) { back.appendChild(section(g.name, makeGrid(g.words, '', addToken))); });
 
     var front = $('paneFront');
-    var models = MODELS.concat(S.custom || []);
-    var mSec = section('型式（次の番号へ引き継ぎ）', makeGrid(models, '', pick('model'), 'model'));
-    var addRow = document.createElement('div'); addRow.className = 'row'; addRow.style.marginTop = '6px';
-    addRow.innerHTML = '<input id="newModel" type="text" placeholder="型式を追加（例 ZD8）" autocapitalize="characters"><button id="newModelBtn">追加</button>';
-    mSec.appendChild(addRow);
-    front.appendChild(mSec);
+    front.appendChild(section('型式（次の番号へ引き継ぎ）', makeGrid(sortedModels(), '', pick('model'), 'model')));
     front.appendChild(section('倉庫（次の番号へ引き継ぎ）', makeGrid(WH, 'c5', pick('wh'), 'wh')));
     front.appendChild(section('サイズ', makeGrid(SIZES, 'c3', pick('size'), 'size')));
-
-    $('newModelBtn').addEventListener('click', function () {
-      var v = $('newModel').value.trim().toUpperCase();
-      if (!v) return;
-      S.custom = S.custom || [];
-      if (MODELS.indexOf(v) < 0 && S.custom.indexOf(v) < 0) S.custom.push(v);
-      memo(cur()).model = v;
-      $('newModel').value = '';
-      rebuild();
-    });
   }
   function rebuild() {
     $('paneBack').innerHTML = ''; $('paneFront').innerHTML = '';
-    buildPanels(); render();
+    buildPanels();
+    if (S) render();
   }
+
+  // ---- 設定画面 ----
+  var setTab = 'words';
+  function armOnce(btn, armText, onSecond) {
+    if (btn.classList.contains('arm')) { onSecond(); return; }
+    var orig = btn.textContent;
+    btn.classList.add('arm'); btn.textContent = armText;
+    setTimeout(function () { if (btn.isConnected) { btn.classList.remove('arm'); btn.textContent = orig; } }, 2500);
+  }
+  function wordRow(text, onUp, onDown, onDel) {
+    var r = document.createElement('div'); r.className = 'wrow';
+    var s = document.createElement('span'); s.textContent = text; r.appendChild(s);
+    if (onUp !== undefined) {
+      [['↑', onUp, '上へ'], ['↓', onDown, '下へ']].forEach(function (d) {
+        var b = document.createElement('button'); b.textContent = d[0]; b.setAttribute('aria-label', text + 'を' + d[2]);
+        if (!d[1]) b.disabled = true; else b.addEventListener('click', function () { d[1](); changed(); });
+        r.appendChild(b);
+      });
+    }
+    var x = document.createElement('button'); x.className = 'del'; x.textContent = '×'; x.setAttribute('aria-label', text + 'を消す');
+    x.addEventListener('click', function () { armOnce(x, '消す', function () { onDel(); changed(); }); });
+    r.appendChild(x);
+    return r;
+  }
+  function addRow(id, placeholder, onAdd) {
+    var row = document.createElement('div'); row.className = 'row';
+    var inp = document.createElement('input'); inp.id = id; inp.type = 'text'; inp.placeholder = placeholder; inp.enterKeyHint = 'done';
+    var b = document.createElement('button'); b.textContent = '追加';
+    function go() {
+      var v = inp.value.trim();
+      if (!v) return;
+      onAdd(v); changed();
+      var again = $(id); if (again) again.focus();
+    }
+    b.addEventListener('click', go);
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    row.appendChild(inp); row.appendChild(b);
+    return row;
+  }
+  function move(arr, i, d) { var t = arr[i]; arr[i] = arr[i + d]; arr[i + d] = t; }
+  function note(text) { var p = document.createElement('p'); p.className = 'setnote'; p.textContent = text; return p; }
+
+  function renderSettings() {
+    var body = $('setBody'), keep = body.scrollTop;
+    body.innerHTML = '';
+    $('setTabWords').setAttribute('aria-selected', setTab === 'words');
+    $('setTabModels').setAttribute('aria-selected', setTab === 'models');
+    if (setTab === 'words') {
+      body.appendChild(note('↑↓で並べ替え、×を2回押すと消えます。入力済みのメモはそのまま残ります。'));
+      W.groups.forEach(function (g, gi) {
+        var list = document.createElement('div'); list.className = 'wl';
+        g.words.forEach(function (w, i) {
+          list.appendChild(wordRow(w,
+            i > 0 ? function () { move(g.words, i, -1); } : null,
+            i < g.words.length - 1 ? function () { move(g.words, i, 1); } : null,
+            function () { g.words.splice(i, 1); }));
+        });
+        var sec = section(g.name + '（' + g.words.length + '）', list);
+        sec.appendChild(addRow('addWord' + gi, '「' + g.name + '」に言葉を追加', function (v) {
+          if (g.words.indexOf(v) < 0) g.words.push(v);
+        }));
+        body.appendChild(sec);
+      });
+      var rs = document.createElement('button'); rs.id = 'resetWords'; rs.textContent = '状態の言葉を最初の一覧に戻す';
+      rs.addEventListener('click', function () {
+        armOnce(rs, 'もう一度押すと最初の一覧に戻ります', function () { W.groups = defaultGroups(); changed(); });
+      });
+      body.appendChild(rs);
+    } else {
+      body.appendChild(note('アルファベット順に自動で並びます。×を2回押すと消えます。'));
+      var list = document.createElement('div'); list.className = 'wl';
+      sortedModels().forEach(function (m) {
+        list.appendChild(wordRow(m, undefined, undefined, function () { W.models.splice(W.models.indexOf(m), 1); }));
+      });
+      var sec = section('型式（' + W.models.length + '）', list);
+      sec.insertBefore(addRow('addModel', '型式を追加（例 ZD8）', function (v) {
+        v = v.toUpperCase();
+        if (W.models.indexOf(v) < 0) W.models.push(v);
+      }), list);
+      body.appendChild(sec);
+    }
+    body.scrollTop = keep;
+  }
+  function changed() { saveWords(); renderSettings(); rebuild(); }
+
+  $('setBtn').addEventListener('click', function () { $('settings').hidden = false; renderSettings(); });
+  $('setClose').addEventListener('click', function () { $('settings').hidden = true; });
+  $('setTabWords').addEventListener('click', function () { setTab = 'words'; $('setBody').scrollTop = 0; renderSettings(); });
+  $('setTabModels').addEventListener('click', function () { setTab = 'models'; $('setBody').scrollTop = 0; renderSettings(); });
 
   function showTab(front) {
     $('paneFront').hidden = !front; $('paneBack').hidden = front;
@@ -2807,7 +2931,7 @@ var qrcode = function() {
     var p = draftP, n = parseInt(draftN, 10);
     if (!/^[A-Z]{1,3}$/.test(p) || !(n >= 1 && n <= MAX)) return;
     try { localStorage.setItem(PRE_KEY, p); } catch (e) {}
-    if (!S) { S = { prefix: p, nextNum: n, generated: [], idx: -1, memos: {}, custom: [] }; buildPanels(); }
+    if (!S) S = { prefix: p, nextNum: n, generated: [], idx: -1, memos: {} };
     pushId(p, n);
     $('numModal').hidden = true;
     render();
@@ -2840,9 +2964,15 @@ var qrcode = function() {
 
   // ---- 起動 ----
   S = load();
+  // 以前の「型式を追加」で足した型式は、設定の一覧へ移す
+  if (S && S.custom && S.custom.length) {
+    S.custom.forEach(function (m) { if (W.models.indexOf(m) < 0) W.models.push(m); });
+    delete S.custom; saveWords();
+  }
+  buildPanels();
   if (S && S.generated && S.generated.length) {
     S.memos = S.memos || {};
-    buildPanels(); render(); keepAwake();
+    render(); keepAwake();
   } else {
     S = null;
     openNum(false);
