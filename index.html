@@ -65,6 +65,8 @@
     padding: 12px max(14px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
   }
   #preview { font-size: 15px; font-weight: bold; line-height: 1.35; min-height: 1.35em; max-height: 6em; overflow-y: auto; }
+  #sheetMeta { display: flex; flex-wrap: wrap; gap: 6px; }
+  #sheetMeta button { font-size: 13px; font-weight: bold; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--bg); padding: 4px 9px; }
   #preview .empty { color: var(--muted); font-weight: normal; font-size: 13px; }
   #preview > div { padding: 2px 0; border-bottom: 1px dashed var(--line); }
   #preview > div:last-child { border-bottom: none; }
@@ -123,6 +125,9 @@
   .sethead h1 { font-size: 18px; margin: 0; }
   #setClose { font-size: 15px; font-weight: bold; background: var(--accent); color: #ffffff; border: none; border-radius: 8px; padding: 10px 18px; }
   #setBody { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+  .carry { display: flex; gap: 10px; align-items: center; background: var(--soft); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: bold; }
+  .carry input { width: 24px; height: 24px; flex: 0 0 auto; accent-color: var(--accent); }
+  .carry small { display: block; font-size: 11px; font-weight: normal; color: var(--muted); margin-top: 2px; }
   .setnote { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 4px 2px 0; }
   .wl { display: flex; flex-direction: column; gap: 4px; }
   .wrow { display: flex; gap: 4px; align-items: center; }
@@ -162,6 +167,7 @@
 
 <div id="stateSheet" class="overlay" hidden>
   <div class="sheet">
+    <div id="sheetMeta" hidden></div>
     <div id="preview"></div>
     <div id="tools">
       <button id="sepBtn" title="次の行へ">改行 ↵</button>
@@ -207,6 +213,10 @@
     <h1>設定</h1>
     <button id="setClose">閉じる</button>
   </div>
+  <label class="carry" for="carryChk">
+    <input id="carryChk" type="checkbox">
+    <span>型式・倉庫を次の番号へ引き継ぐ<small>外すと、次の番号はいつも空から始まります（状態だけ撮るとき向け）</small></span>
+  </label>
   <div class="seg" role="tablist">
     <button id="setTabWords" role="tab" aria-selected="true">状態の言葉</button>
     <button id="setTabModels" role="tab" aria-selected="false">型式</button>
@@ -2597,7 +2607,7 @@ var qrcode = function() {
     S.generated.push(id);
     S.idx = S.generated.length - 1;
     var m = memo(id);
-    if (isNew && prev) { m.model = prev.model; m.wh = prev.wh; }
+    if (isNew && prev && W.carry !== false) { m.model = prev.model; m.wh = prev.wh; }
     var r = incrementId(p, n);
     S.prefix = r[0]; S.nextNum = r[1];
     trim();
@@ -2648,6 +2658,17 @@ var qrcode = function() {
     fillLines($('memo'), ls);
     fit();
     $('stateBtn').textContent = ls.length ? '状態を直す（' + ls.length + '行）' : '状態を入れる';
+
+    // シートの上に、選んでいる型式・倉庫・サイズを出す。押すとそれだけ消える
+    var sm = $('sheetMeta');
+    sm.innerHTML = '';
+    [['model', m.model], ['wh', m.wh ? '倉庫' + m.wh : ''], ['size', m.size]].forEach(function (k) {
+      if (!k[1]) return;
+      var b = document.createElement('button'); b.textContent = k[1] + ' ×'; b.setAttribute('aria-label', k[1] + 'を外す');
+      b.addEventListener('click', function () { buzz(); memo(cur())[k[0]] = ''; render(); });
+      sm.appendChild(b);
+    });
+    sm.hidden = !sm.children.length;
 
     var pv = $('preview');
     if (ls.length) {
@@ -2711,8 +2732,9 @@ var qrcode = function() {
     W.groups.forEach(function (g) { back.appendChild(section(g.name, makeGrid(g.words, '', addToken))); });
 
     var front = $('paneFront');
-    front.appendChild(section('型式（次の番号へ引き継ぎ）', makeGrid(sortedModels(), '', pick('model'), 'model')));
-    front.appendChild(section('倉庫（次の番号へ引き継ぎ）', makeGrid(WH, 'c5', pick('wh'), 'wh')));
+    var tail = W.carry !== false ? '（次の番号へ引き継ぎ）' : '';
+    front.appendChild(section('型式' + tail, makeGrid(sortedModels(), '', pick('model'), 'model')));
+    front.appendChild(section('倉庫' + tail, makeGrid(WH, 'c5', pick('wh'), 'wh')));
     front.appendChild(section('サイズ', makeGrid(SIZES, 'c3', pick('size'), 'size')));
   }
   function rebuild() {
@@ -2805,7 +2827,11 @@ var qrcode = function() {
   }
   function changed() { saveWords(); renderSettings(); rebuild(); }
 
-  $('setBtn').addEventListener('click', function () { $('settings').hidden = false; renderSettings(); });
+  $('setBtn').addEventListener('click', function () {
+    $('carryChk').checked = W.carry !== false;
+    $('settings').hidden = false; renderSettings();
+  });
+  $('carryChk').addEventListener('change', function () { W.carry = this.checked; saveWords(); rebuild(); });
   $('setClose').addEventListener('click', function () { $('settings').hidden = true; });
   $('setTabWords').addEventListener('click', function () { setTab = 'words'; $('setBody').scrollTop = 0; renderSettings(); });
   $('setTabModels').addEventListener('click', function () { setTab = 'models'; $('setBody').scrollTop = 0; renderSettings(); });
@@ -2851,7 +2877,7 @@ var qrcode = function() {
     }
     clearTimeout(clearTimer);
     b.classList.remove('arm'); b.textContent = '全消し';
-    var m = memo(cur()); m.tokens = []; m.size = '';
+    var m = memo(cur()); m.tokens = []; m.model = ''; m.wh = ''; m.size = '';
     render();
   });
 
