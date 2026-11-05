@@ -154,6 +154,11 @@
   .carry { display: flex; gap: 10px; align-items: center; background: var(--soft); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: bold; }
   .carry input { width: 24px; height: 24px; flex: 0 0 auto; accent-color: var(--accent); }
   .carry small { display: block; font-size: 11px; font-weight: normal; color: var(--muted); margin-top: 2px; }
+  .mode { background: var(--soft); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .mode .seg { background: var(--line); }
+  .mode .setnote { margin: 0; }
+  .modeTitle { font-size: 14px; font-weight: bold; }
+  .modeTitle small { font-size: 11px; font-weight: normal; color: var(--muted); margin-left: 8px; }
   .setnote { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 4px 2px 0; }
   .wl { display: flex; flex-direction: column; gap: 4px; }
   .wrow { display: flex; gap: 4px; align-items: center; }
@@ -247,10 +252,14 @@
     <h1>設定</h1>
     <button id="setClose">閉じる</button>
   </div>
-  <label class="carry" for="sepChk">
-    <input id="sepChk" type="checkbox">
-    <span>番号の間に区切りQR（QR_A）をはさむ<small>次へ（はらう）で「番号 → 区切りA → 次の番号」と進みます</small></span>
-  </label>
+  <div class="mode">
+    <div class="modeTitle">撮り方<small>このスマホだけの設定です。使う人ごとに選べます</small></div>
+    <div class="seg" role="radiogroup" aria-label="撮り方">
+      <button id="modeNormal" role="radio" aria-selected="true">いつもの（番号だけ）</button>
+      <button id="modeSep" role="radio" aria-selected="false">区切りAをはさむ</button>
+    </div>
+    <p class="setnote" id="modeNote"></p>
+  </div>
   <label class="carry" for="carryChk">
     <input id="carryChk" type="checkbox">
     <span>型式を次の番号へ引き継ぐ<small>倉庫・サイズ・状態は番号ごとに空から始まります</small></span>
@@ -2639,7 +2648,8 @@ var qrcode = function() {
     if (!S.memos[id]) S.memos[id] = { model: '', wh: '', size: '', tokens: [], note: '' };
     return S.memos[id];
   }
-  function sepOn() { return W.sepA !== false; }
+  // 区切りAをはさむのは選んだ人だけ（ほかの作業者が混乱しないよう、はじめは「いつもの」）
+  function sepOn() { return W.sepA === true; }
 
   // 新しい番号を足す。型式だけ直前の番号から引き継ぐ（倉庫・サイズ・状態は空から）
   function pushId(p, n) {
@@ -2693,7 +2703,7 @@ var qrcode = function() {
       $('progress').textContent = 'このあと ' + id;
       renderQR(SEP_A);
     } else {
-      $('mode-label').textContent = '番号札モード（スマホ単独）';
+      $('mode-label').textContent = sepOn() ? '番号札モード（区切りAをはさむ撮り方）' : '番号札モード（スマホ単独）';
       $('number').textContent = id;
       $('progress').textContent = (S.idx + 1) + ' / ' + S.generated.length + (S.idx === S.generated.length - 1 ? '（最新）' : '');
       renderQR(id);
@@ -2957,11 +2967,20 @@ var qrcode = function() {
 
   $('setBtn').addEventListener('click', function () {
     $('carryChk').checked = W.carry !== false;
-    $('sepChk').checked = sepOn();
+    drawMode();
     $('settings').hidden = false; renderSettings();
   });
   $('carryChk').addEventListener('change', function () { W.carry = this.checked; saveWords(); rebuild(); });
-  $('sepChk').addEventListener('change', function () { W.sepA = this.checked; if (S) S.onSep = false; saveWords(); rebuild(); });
+  function drawMode() {
+    $('modeNormal').setAttribute('aria-selected', !sepOn());
+    $('modeSep').setAttribute('aria-selected', sepOn());
+    $('modeNote').textContent = sepOn()
+      ? '次へ（はらう）で「番号 → 区切りA → 次の番号」と進みます。商品写真 → 区切りA → 状態つきの番号、の順に撮ります。'
+      : '次へ（はらう）で番号だけが進みます（今までと同じ）。';
+  }
+  function setMode(sep) { buzz(); W.sepA = sep; if (S) S.onSep = false; saveWords(); drawMode(); rebuild(); }
+  $('modeNormal').addEventListener('click', function () { setMode(false); });
+  $('modeSep').addEventListener('click', function () { setMode(true); });
   $('setClose').addEventListener('click', function () { $('settings').hidden = true; });
   $('setTabWords').addEventListener('click', function () { setTab = 'words'; $('setBody').scrollTop = 0; renderSettings(); });
   $('setTabModels').addEventListener('click', function () { setTab = 'models'; $('setBody').scrollTop = 0; renderSettings(); });
