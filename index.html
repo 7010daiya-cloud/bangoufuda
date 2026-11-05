@@ -3190,10 +3190,12 @@ var qrcode = function() {
   function moveBox() {
     var box = document.createElement('div'); box.className = 'move';
     box.innerHTML = '<b>別のアイコン・Safari へ引き継ぐ</b>' +
-      '<p class="setnote" style="margin:0">ホーム画面のアイコンと Safari では、番号の続きや足した言葉が別々に保存されます。前に使っていた方で「コピー」→ 新しい方でここに貼り付けて「読み込む」と、そのまま続きから使えます。</p>';
+      '<p class="setnote" style="margin:0">ホーム画面のアイコンと Safari では、番号の続きや足した言葉が別々に保存されます。前に使っていた方で「コピー」→ 新しい方でここに貼り付けて読み込みます。新しい方ですでに番号を進めているときは「言葉と設定だけ」を選んでください。</p>';
     var copy = document.createElement('button'); copy.textContent = '引き継ぎ用の文字をコピー';
     var ta = document.createElement('textarea'); ta.id = 'moveText'; ta.rows = 3; ta.placeholder = 'ここに貼り付け';
-    var load = document.createElement('button'); load.textContent = '貼り付けた内容を読み込む';
+    var loadW = document.createElement('button'); loadW.textContent = '言葉と設定だけ読み込む（番号は今のまま）';
+    var load = document.createElement('button'); load.textContent = '全部読み込む（番号も前の内容に置き換え）';
+    load.style.background = '#eeeeee'; load.style.color = '#111111';
     copy.addEventListener('click', function () {
       var pre = ''; try { pre = localStorage.getItem(PRE_KEY) || ''; } catch (e) {}
       var s = JSON.stringify({ banGoFuda: 1, S: S, W: W, prefix: pre });
@@ -3201,10 +3203,41 @@ var qrcode = function() {
       var fallback = function () { ta.value = s; ta.focus(); ta.select(); copy.textContent = '下の文字を長押しでコピーしてください'; };
       try { navigator.clipboard.writeText(s).then(done, fallback); } catch (e) { fallback(); }
     });
-    load.addEventListener('click', function () {
+    function readMove(btn) {
       var d;
       try { d = JSON.parse(ta.value); } catch (e) { d = null; }
-      if (!d || d.banGoFuda !== 1 || !d.W || !d.W.groups) { load.textContent = '読み込めない文字です（コピーし直してください）'; return; }
+      if (!d || d.banGoFuda !== 1 || !d.W || !d.W.groups) { btn.textContent = '読み込めない文字です（コピーし直してください）'; return null; }
+      return d;
+    }
+    // 言葉と設定だけ：運んできた一覧を元に、こちらで足した言葉・型式、押した回数、最近使ったを足し合わせる。
+    // 番号の続き・撮り方・引き継ぎの設定は、こちらのまま
+    loadW.addEventListener('click', function () {
+      var d = readMove(loadW);
+      if (!d) return;
+      armOnce(loadW, 'もう一度押すと読み込みます（番号は今のまま）', function () {
+        var out = JSON.parse(JSON.stringify(d.W)), dflt = {};
+        GROUPS.forEach(function (g) { g.words.forEach(function (w) { dflt[w] = 1; }); });
+        W.groups.forEach(function (g) {
+          var t = out.groups.filter(function (x) { return x.name === g.name; })[0];
+          if (!t) { out.groups.push(g); return; }
+          g.words.forEach(function (w) { if (!dflt[w] && t.words.indexOf(w) < 0) t.words.push(w); });
+        });
+        W.models.forEach(function (m) { if (out.models.indexOf(m) < 0 && MODELS.indexOf(m) < 0) out.models.push(m); });
+        out.use = out.use || {};
+        Object.keys(W.use || {}).forEach(function (w) { out.use[w] = (out.use[w] || 0) + W.use[w]; });
+        ['recentModels', 'recentWh'].forEach(function (k) {
+          var a = [];
+          (W[k] || []).concat(out[k] || []).forEach(function (v) { if (a.indexOf(v) < 0) a.push(v); });
+          out[k] = a.slice(0, 4);
+        });
+        out.carry = W.carry; out.sepA = W.sepA;
+        try { localStorage.setItem(WORDS_KEY, JSON.stringify(out)); } catch (e) {}
+        location.reload();
+      });
+    });
+    load.addEventListener('click', function () {
+      var d = readMove(load);
+      if (!d) return;
       armOnce(load, 'もう一度押すと読み込みます（今の内容は置き換わります）', function () {
         try {
           localStorage.setItem(WORDS_KEY, JSON.stringify(d.W));
@@ -3214,7 +3247,7 @@ var qrcode = function() {
         location.reload();
       });
     });
-    box.appendChild(copy); box.appendChild(ta); box.appendChild(load);
+    box.appendChild(copy); box.appendChild(ta); box.appendChild(loadW); box.appendChild(load);
     return box;
   }
 
