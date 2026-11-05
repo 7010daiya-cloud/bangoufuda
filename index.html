@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>番号札モード（スマホ用）</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="番号札">
+<meta name="theme-color" content="#ffffff">
 <style>
   :root { padding-top: env(safe-area-inset-top, 0px); }
   /* いつもの画面は元の番号札モードと同じ（番号・QR・戻る/次へ）。状態と番号の入力は、押したときだけ出るシート */
@@ -123,6 +130,24 @@
   #jump button { flex: 0 0 auto; min-height: 40px; padding: 0 14px; font-size: 14px; font-weight: bold; border: 1.5px solid var(--line); border-radius: 20px; background: var(--soft); }
   #jump button.hot { border-color: var(--accent); color: var(--accent); background: var(--bg); }
   #quick h2 { color: var(--accent); }
+  .recent { margin-bottom: 8px; }
+  .recent .lbl { font-size: 11px; font-weight: bold; color: var(--accent); margin: 0 2px 4px; }
+
+  /* 元に戻す（消す・写すの直後5秒だけ） */
+  #toast {
+    position: fixed; z-index: 40; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
+    display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 16px;
+    background: var(--ink); color: #ffffff; border-radius: 12px; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  }
+  #toastMsg { flex: 1; min-width: 0; }
+  #toastUndo { min-height: 44px; padding: 0 16px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; background: var(--accent); color: #ffffff; }
+
+  /* 設定：別のアイコンへの引っ越し */
+  .move { margin-top: 18px; padding: 10px 12px; background: var(--soft); border-radius: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .move b { font-size: 14px; }
+  .move button { min-height: 44px; font-size: 14px; font-weight: bold; border: none; border-radius: 8px; background: var(--dark); color: #ffffff; }
+  .move textarea { width: 100%; font-size: 13px; font-family: inherit; padding: 8px; border: 1px solid #cccccc; border-radius: 8px; background: var(--bg); color: var(--ink); resize: none; }
   .grid.c2 { grid-template-columns: 1fr 1fr; }
   .grid.c2 button { text-align: left; padding: 6px 10px; }
   .sec h2 { font-size: 11px; font-weight: bold; color: var(--muted); letter-spacing: .08em; margin: 8px 2px 4px; }
@@ -264,6 +289,8 @@
     <button id="resetBtn" hidden>入力した控えを全部消して最初から</button>
   </div>
 </div>
+
+<div id="toast" role="status" hidden><span id="toastMsg"></span><button id="toastUndo">元に戻す</button></div>
 
 <div id="settings" hidden>
   <div class="sethead">
@@ -2754,7 +2781,7 @@ var qrcode = function() {
     [['model', m.model], ['wh', m.wh ? '倉庫' + m.wh : ''], ['size', m.size]].forEach(function (k) {
       if (!k[1]) return;
       var b = document.createElement('button'); b.textContent = k[1] + ' ×'; b.setAttribute('aria-label', k[1] + 'を外す');
-      b.addEventListener('click', function () { buzz(); memo(cur())[k[0]] = ''; render(); });
+      b.addEventListener('click', function () { buzz(); keepForUndo(k[1] + ' を外しました'); memo(cur())[k[0]] = ''; render(); });
       sm.appendChild(b);
     });
     sm.hidden = !sm.children.length;
@@ -2843,7 +2870,7 @@ var qrcode = function() {
   function lineActions(i) {
     var box = document.createElement('div'); box.className = 'lineAct';
     [['この行に足す', '', function () { editLine = i; selLine = null; }],
-     ['この行を消す', 'del', function () { deleteLine(i); selLine = null; }],
+     ['この行を消す', 'del', function () { keepForUndo((i + 1) + '行目を消しました'); deleteLine(i); selLine = null; }],
      ['やめる', '', function () { selLine = null; }]].forEach(function (a) {
       var b = document.createElement('button'); b.textContent = a[0]; if (a[1]) b.className = a[1];
       b.addEventListener('click', function (e) { e.stopPropagation(); buzz(); a[2](); render(); });
@@ -2851,6 +2878,26 @@ var qrcode = function() {
     });
     return box;
   }
+  // ---- 元に戻す：消す・写すなどの直後5秒だけ出す ----
+  var undoSnap = null, undoTimer = null;
+  function keepForUndo(label) {
+    var id = cur();
+    undoSnap = { id: id, memo: JSON.parse(JSON.stringify(memo(id))) };
+    $('toastMsg').textContent = label;
+    $('toast').hidden = false;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(function () { $('toast').hidden = true; undoSnap = null; }, 5000);
+  }
+  $('toastUndo').addEventListener('click', function () {
+    if (!undoSnap) return;
+    buzz();
+    S.memos[undoSnap.id] = undoSnap.memo;
+    undoSnap = null; clearTimeout(undoTimer); $('toast').hidden = true;
+    editLine = null; selLine = null;
+    $('note').value = memo(cur()).note || '';
+    render();
+  });
+
   function deleteLine(i) {
     var t = memo(cur()).tokens, r = lineRanges(t)[i];
     if (!r) return;
@@ -2872,6 +2919,7 @@ var qrcode = function() {
     return function (w) {
       var m = memo(cur());
       m[kind] = (m[kind] === w) ? '' : w;
+      remember(kind, m[kind]);
       render();
     };
   }
@@ -2921,7 +2969,7 @@ var qrcode = function() {
     var front = $('paneFront');
     var mg = makeGrid(sortedModels(), '', pick('model'), 'model');
     var mSec = withAdd(section('型式' + (W.carry !== false ? '（次の番号へ引き継ぎ）' : ''), mg), mg, 'quickModel', '型式を追加（例 ZD8）',
-      function (v) { v = v.toUpperCase(); if (W.models.indexOf(v) < 0) W.models.push(v); memo(cur()).model = v; });
+      function (v) { v = v.toUpperCase(); if (W.models.indexOf(v) < 0) W.models.push(v); memo(cur()).model = v; remember('model', v); });
     var whSec = section('倉庫', makeGrid(WH, 'c5', pick('wh'), 'wh'));
     if (MAP.length) {
       var mb = document.createElement('button'); mb.className = 'mapBtn'; mb.textContent = '地図から倉庫を選ぶ';
@@ -2930,6 +2978,10 @@ var qrcode = function() {
     }
     var sSec = section('サイズ', makeGrid(SIZES, 'c3', pick('size'), 'size'));
     mSec.dataset.key = 'model'; whSec.dataset.key = 'wh'; sSec.dataset.key = 'size';
+    [[mSec, 'recentModel'], [whSec, 'recentWh']].forEach(function (k) {
+      var box = document.createElement('div'); box.className = 'recent'; box.id = k[1]; box.hidden = true;
+      k[0].insertBefore(box, k[0].querySelector('.grid'));
+    });
     front.appendChild(mSec); front.appendChild(whSec); front.appendChild(sSec);
     if (S) buildQuick();
   }
@@ -2957,6 +3009,7 @@ var qrcode = function() {
       .sort(function (a, b) { return use[b] - use[a]; }).slice(0, 8);
     if (ls.length) {
       q.appendChild(section('よく使う行（押すと1行まるごと入ります）', makeGrid(ls, 'c2', function (l) {
+        keepForUndo('「' + l + '」を入れました');
         var t = memo(cur()).tokens;
         if (editLine === null && t.length && t[t.length - 1] !== SEP) t.push(SEP);
         insertTokens(l.split(' '));
@@ -2965,6 +3018,30 @@ var qrcode = function() {
     }
     if (ws.length) q.appendChild(section('よく使う言葉', makeGrid(ws, '', addToken)));
     $('jumpHot').hidden = !(ls.length || ws.length);
+    buildRecent();
+  }
+
+  // 型式・倉庫の「最近使った」4つ。これもシートを開いたときだけ並べ直す
+  function remember(kind, v) {
+    if (!v || (kind !== 'model' && kind !== 'wh')) return;
+    var k = kind === 'model' ? 'recentModels' : 'recentWh';
+    var a = (W[k] || []).filter(function (x) { return x !== v; });
+    a.unshift(v);
+    W[k] = a.slice(0, 4);
+    saveWords();
+  }
+  function buildRecent() {
+    [['model', 'recentModel', (W.recentModels || []).filter(function (v) { return W.models.indexOf(v) >= 0; })],
+     ['wh', 'recentWh', W.recentWh || []]].forEach(function (k) {
+      var box = $(k[1]);
+      if (!box) return;
+      box.innerHTML = '';
+      box.hidden = !k[2].length;
+      if (!k[2].length) return;
+      var lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = '最近使った';
+      box.appendChild(lbl);
+      box.appendChild(makeGrid(k[2], '', pick(k[0]), k[0]));
+    });
   }
 
   function openSheet(front, key) {
@@ -3007,6 +3084,7 @@ var qrcode = function() {
       g.addEventListener('click', function () {
         buzz();
         memo(cur()).wh = g.getAttribute('data-w');
+        remember('wh', memo(cur()).wh);
         $('mapSheet').hidden = true;
         render();
       });
@@ -3103,9 +3181,42 @@ var qrcode = function() {
       }), list);
       body.appendChild(sec);
     }
+    body.appendChild(moveBox());
     body.scrollTop = keep;
   }
   function changed() { saveWords(); renderSettings(); rebuild(); }
+
+  // 引っ越し：ホーム画面のアイコン（アプリ）と Safari は保存場所が別なので、番号の続き・足した言葉・設定を文字で運ぶ
+  function moveBox() {
+    var box = document.createElement('div'); box.className = 'move';
+    box.innerHTML = '<b>別のアイコン・Safari へ引き継ぐ</b>' +
+      '<p class="setnote" style="margin:0">ホーム画面のアイコンと Safari では、番号の続きや足した言葉が別々に保存されます。前に使っていた方で「コピー」→ 新しい方でここに貼り付けて「読み込む」と、そのまま続きから使えます。</p>';
+    var copy = document.createElement('button'); copy.textContent = '引き継ぎ用の文字をコピー';
+    var ta = document.createElement('textarea'); ta.id = 'moveText'; ta.rows = 3; ta.placeholder = 'ここに貼り付け';
+    var load = document.createElement('button'); load.textContent = '貼り付けた内容を読み込む';
+    copy.addEventListener('click', function () {
+      var pre = ''; try { pre = localStorage.getItem(PRE_KEY) || ''; } catch (e) {}
+      var s = JSON.stringify({ banGoFuda: 1, S: S, W: W, prefix: pre });
+      var done = function () { copy.textContent = 'コピーしました'; setTimeout(function () { copy.textContent = '引き継ぎ用の文字をコピー'; }, 2500); };
+      var fallback = function () { ta.value = s; ta.focus(); ta.select(); copy.textContent = '下の文字を長押しでコピーしてください'; };
+      try { navigator.clipboard.writeText(s).then(done, fallback); } catch (e) { fallback(); }
+    });
+    load.addEventListener('click', function () {
+      var d;
+      try { d = JSON.parse(ta.value); } catch (e) { d = null; }
+      if (!d || d.banGoFuda !== 1 || !d.W || !d.W.groups) { load.textContent = '読み込めない文字です（コピーし直してください）'; return; }
+      armOnce(load, 'もう一度押すと読み込みます（今の内容は置き換わります）', function () {
+        try {
+          localStorage.setItem(WORDS_KEY, JSON.stringify(d.W));
+          if (d.S && d.S.generated && d.S.generated.length) localStorage.setItem(KEY, JSON.stringify(d.S));
+          if (d.prefix) localStorage.setItem(PRE_KEY, d.prefix);
+        } catch (e) {}
+        location.reload();
+      });
+    });
+    box.appendChild(copy); box.appendChild(ta); box.appendChild(load);
+    return box;
+  }
 
   $('setBtn').addEventListener('click', function () {
     $('carryChk').checked = W.carry !== false;
@@ -3166,6 +3277,7 @@ var qrcode = function() {
     var p = S.idx > 0 ? S.memos[S.generated[S.idx - 1]] : null;
     if (!p) return;
     buzz();
+    keepForUndo('前の番号（' + S.generated[S.idx - 1] + '）の状態を写しました');
     var m = memo(cur());
     editLine = null; selLine = null;
     var src = p.tokens.slice();
@@ -3191,6 +3303,7 @@ var qrcode = function() {
     }
     clearTimeout(clearTimer);
     b.classList.remove('arm'); b.textContent = '全消し';
+    keepForUndo('全部消しました');
     var m = memo(cur()); m.tokens = []; m.model = ''; m.wh = ''; m.size = ''; m.note = '';
     editLine = null; selLine = null;
     $('note').value = '';
