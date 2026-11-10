@@ -1,0 +1,3528 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>番号札モード（出品サポート試作）</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="番号札(試)">
+<meta name="theme-color" content="#ffffff">
+<style>
+  :root { padding-top: env(safe-area-inset-top, 0px); }
+  /* いつもの画面は元の番号札モードと同じ（番号・QR・戻る/次へ）。状態と番号の入力は、押したときだけ出るシート */
+  :root {
+    --bg: #ffffff;
+    --ink: #111111;
+    --muted: #888888;
+    --soft: #f2f2f2;
+    --line: #dddddd;
+    --accent: #f43f5e;
+    --dark: #555555;
+    --dim: rgba(0, 0, 0, 0.4);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
+    display: flex; flex-direction: column; overflow: hidden;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0;
+  }
+  button { font-family: inherit; color: var(--ink); cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* ---- いつもの画面（撮影するところ） ---- */
+  #stage { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; touch-action: pan-y; }
+  #mode-label { font-size: 12px; color: var(--muted); padding-top: 14px; }
+  #progress { font-size: 13px; color: var(--muted); padding-top: 2px; }
+  #number { font-size: 72px; font-weight: bold; line-height: 1.05; padding-top: 6px; font-variant-numeric: tabular-nums; }
+  #meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding-top: 4px; }
+  #meta button { font-size: 17px; font-weight: bold; border: 2px solid var(--ink); border-radius: 6px; padding: 4px 10px; background: var(--bg); }
+  #memo { cursor: pointer; }
+  #qrwrap { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; padding: 8px 0; }
+  #qrcode img { display: block; width: 62vw; height: 62vw; max-width: 360px; max-height: 360px; image-rendering: pixelated; }
+  body.has-memo #qrwrap { flex: 0 0 auto; }
+  body.has-memo #qrcode img { width: 46vw; height: 46vw; max-width: 260px; max-height: 260px; }
+  #memo { flex: 1 1 auto; min-height: 0; width: 100%; overflow: hidden; text-align: center; font-size: 24px; font-weight: bold; line-height: 1.3; }
+  #memo .free { font-weight: normal; }
+  /* 出品サポート：管理番号QR（左）とデータQR（右）を横に並べる。縦に積むと、画面の下が切れる写真でデータQRも切れてしまうため */
+  #qrcode2 { display: none; }
+  body.support:not(.sep) #qrwrap { gap: 12px; }
+  body.support:not(.sep) #qrcode2 { display: block; }
+  body.support:not(.sep) #qrcode img { width: 46vw; height: 46vw; max-width: 230px; max-height: 230px; }
+  body.support:not(.sep) #qrcode2 img { display: block; image-rendering: pixelated; max-width: 34vw; max-height: 34vw; }
+  /* 区切りQR（QR_A）の画面 */
+  body.sep #number { font-size: 60px; }
+  body.sep #meta, body.sep #memo { display: none; }
+  body.sep #qrwrap { flex: 1 1 auto; }
+  body.sep #qrcode img { width: 62vw; height: 62vw; max-width: 360px; max-height: 360px; }
+  body.sep #stage { background: repeating-linear-gradient(135deg, var(--bg) 0 18px, var(--soft) 18px 36px); }
+
+  #subrow { display: flex; gap: 8px; padding-top: 6px; }
+  #stateBtn { flex: 2; font-size: 15px; font-weight: bold; background: var(--soft); border: none; border-radius: 10px; padding: 12px 0; }
+  #setBtn { flex: 0 0 64px; font-size: 12px; color: #777777; background: var(--soft); border: none; border-radius: 10px; padding: 12px 0; }
+  #jumpToggle { flex: 1; font-size: 12px; color: #777777; background: var(--soft); border: none; border-radius: 10px; padding: 12px 0; }
+  #btnrow { display: flex; gap: 8px; padding: 10px 0 max(18px, env(safe-area-inset-bottom, 0px)); }
+  #btnrow button { flex: 1; font-size: 20px; font-weight: bold; padding: 18px 0; border: none; border-radius: 12px; }
+  #prevBtn { background: #eeeeee; }
+  #nextBtn { background: var(--accent); color: #ffffff !important; }
+
+  /* ---- シート共通 ---- */
+  .overlay { position: fixed; inset: 0; z-index: 20; background: var(--dim); display: flex; }
+  .sheet { background: var(--bg); }
+
+  /* ---- 状態を入れるシート（下から） ---- */
+  #stateSheet { flex-direction: column; justify-content: flex-end; }
+  #stateSheet .sheet {
+    height: 88%; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; gap: 8px;
+    padding: 12px max(14px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+  }
+  #preview { font-size: 15px; font-weight: bold; line-height: 1.35; min-height: 1.35em; max-height: 9em; overflow-y: auto; }
+  #preview .ln { padding: 7px 4px; cursor: pointer; }
+  #preview .ln.sel { background: var(--soft); }
+  #preview .ln.editing { background: #fff1f3; border-left: 3px solid var(--accent); padding-left: 8px; }
+  .lineAct { display: flex; gap: 6px; padding: 4px 0 8px; }
+  .lineAct button { flex: 1; min-height: 42px; font-size: 14px; font-weight: bold; border: none; border-radius: 8px; background: var(--soft); }
+  .lineAct button.del { background: var(--accent); color: #ffffff; }
+  #sheetMeta { display: flex; flex-wrap: wrap; gap: 6px; }
+  #sheetMeta button { font-size: 13px; font-weight: bold; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--bg); padding: 4px 9px; }
+  #preview .empty { color: var(--muted); font-weight: normal; font-size: 13px; }
+  #preview > div { padding: 2px 0; border-bottom: 1px dashed var(--line); }
+  #preview > div:last-child { border-bottom: none; }
+  #preview .nextln { color: var(--accent); font-weight: normal; font-size: 13px; }
+  #tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  #tools button { min-height: 44px; }
+  #tools button:disabled { opacity: .35; }
+  #note { width: 100%; font-size: 16px; font-family: inherit; line-height: 1.4; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); resize: none; }
+  #note:focus { outline: none; border-color: var(--ink); }
+  .grid button.add { border-style: dashed; color: var(--muted); font-weight: normal; }
+  .sec .row { margin-top: 6px; }
+  .mapBtn { margin-top: 6px; width: 100%; font-size: 14px; font-weight: bold; padding: 10px 0; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--bg); }
+
+  /* ---- 倉庫の地図 ---- */
+  #mapSheet { z-index: 25; flex-direction: column; justify-content: flex-end; }
+  #mapSheet .sheet {
+    border-radius: 16px 16px 0 0; display: flex; flex-direction: column; gap: 8px; max-height: 80%;
+    padding: 12px max(14px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+  }
+  .maphead { display: flex; align-items: center; gap: 6px; }
+  .maphead b { font-size: 15px; margin-right: auto; }
+  .maphead button { width: 40px; height: 36px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; background: var(--soft); }
+  #mapBox { overflow: auto; border: 1px solid var(--line); border-radius: 10px; min-height: 0; flex: 1 1 auto; }
+  #mapBox svg { display: block; }
+  #mapBox .room { cursor: pointer; }
+  #mapClose { font-size: 16px; font-weight: bold; padding: 12px 0; border: none; border-radius: 10px; background: #eeeeee; }
+  #tools button { font-size: 14px; font-weight: bold; padding: 10px 0; border-radius: 8px; border: none; background: var(--soft); }
+  #sepBtn { background: var(--ink) !important; color: #ffffff !important; }
+  #clearBtn.arm { background: var(--accent) !important; color: #ffffff !important; }
+  .row { display: flex; gap: 6px; }
+  .row input { flex: 1; min-width: 0; font-size: 17px; font-family: inherit; padding: 9px; border: 1px solid #cccccc; border-radius: 8px; background: var(--bg); color: var(--ink); }
+  .row button { font-size: 15px; font-weight: bold; padding: 0 16px; border-radius: 8px; border: none; background: var(--dark); color: #ffffff; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 9px; padding: 3px; gap: 3px; }
+  .seg button { border: none; background: transparent; font-size: 14px; font-weight: bold; padding: 8px 0; border-radius: 7px; color: var(--muted); }
+  .seg button[aria-selected="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  #words { flex: 1; min-height: 0; overflow-y: auto; position: relative; }
+  /* グループへ飛ぶボタン（一覧の上に固定） */
+  #jump { position: sticky; top: 0; z-index: 2; background: var(--bg); display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 6px; scrollbar-width: none; }
+  #jump::-webkit-scrollbar { display: none; }
+  #jump button { flex: 0 0 auto; min-height: 40px; padding: 0 14px; font-size: 14px; font-weight: bold; border: 1.5px solid var(--line); border-radius: 20px; background: var(--soft); }
+  #jump button.hot { border-color: var(--accent); color: var(--accent); background: var(--bg); }
+  #quick h2 { color: var(--accent); }
+  .recent { margin-bottom: 8px; }
+  .recent .lbl { font-size: 11px; font-weight: bold; color: var(--accent); margin: 0 2px 4px; }
+
+  /* 元に戻す（消す・写すの直後5秒だけ） */
+  #toast {
+    position: fixed; z-index: 40; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
+    display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 16px;
+    background: var(--ink); color: #ffffff; border-radius: 12px; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  }
+  #toastMsg { flex: 1; min-width: 0; }
+  #toastUndo { min-height: 44px; padding: 0 16px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; background: var(--accent); color: #ffffff; }
+
+  /* 設定：別のアイコンへの引っ越し */
+  .move { margin-top: 18px; padding: 10px 12px; background: var(--soft); border-radius: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .move b { font-size: 14px; }
+  .move button { min-height: 44px; font-size: 14px; font-weight: bold; border: none; border-radius: 8px; background: var(--dark); color: #ffffff; }
+  .move textarea { width: 100%; font-size: 13px; font-family: inherit; padding: 8px; border: 1px solid #cccccc; border-radius: 8px; background: var(--bg); color: var(--ink); resize: none; }
+  .grid.c2 { grid-template-columns: 1fr 1fr; }
+  .grid.c2 button { text-align: left; padding: 6px 10px; }
+  .sec h2 { font-size: 11px; font-weight: bold; color: var(--muted); letter-spacing: .08em; margin: 8px 2px 4px; }
+  .grid { display: grid; gap: 5px; grid-template-columns: repeat(4, 1fr); }
+  .grid.c3 { grid-template-columns: repeat(3, 1fr); }
+  .grid.c5 { grid-template-columns: repeat(5, 1fr); }
+  .grid button { min-height: 44px; font-size: 14px; font-weight: bold; line-height: 1.15; padding: 4px 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .grid.c5 button { font-size: 19px; }
+  .grid button:active, .grid button.flash, .grid button.on { background: var(--ink); color: #ffffff; border-color: var(--ink); }
+  #doneBtn { font-size: 18px; font-weight: bold; padding: 14px 0; border: none; border-radius: 12px; background: var(--accent); color: #ffffff; }
+
+  /* ---- 番号を指定するシート（元の番号指定と同じ小さな窓） ---- */
+  #numModal { align-items: center; justify-content: center; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+  #numModal .sheet { border-radius: 14px; padding: 16px; width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px; }
+  #numModal p { font-size: 13px; color: #777777; margin: 0; text-align: center; }
+  .idline { display: flex; gap: 8px; align-items: stretch; }
+  #preChip { flex: 0 0 64px; border: 1px solid #cccccc; border-radius: 8px; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; padding: 3px 0; }
+  #preChip b { font-size: 22px; }
+  #preChip small { font-size: 10px; color: var(--muted); }
+  #preChip.on { background: var(--dark); border-color: var(--dark); color: #ffffff; }
+  #preChip.on small { color: #ffffff; }
+  #idShow { flex: 1; border: 1px solid #cccccc; border-radius: 8px; text-align: center; font-size: 30px; font-weight: bold; padding: 6px 0; font-variant-numeric: tabular-nums; }
+  #idNum.ph { color: #cccccc; }
+  .kp { display: grid; gap: 6px; }
+  .kp button { font-weight: bold; border: none; border-radius: 8px; background: var(--soft); }
+  .kp button:active, .kp button.on { background: var(--dark); color: #ffffff; }
+  #digits { grid-template-columns: repeat(3, 1fr); }
+  #digits button { height: 46px; font-size: 22px; }
+  #digits button.small { font-size: 13px; color: #777777; }
+  #letters { grid-template-columns: repeat(7, 1fr); }
+  #letters button { height: 40px; font-size: 17px; }
+  #numModal .btns { display: flex; gap: 8px; }
+  #numModal .btns button { flex: 1; font-size: 15px; font-weight: bold; padding: 12px 0; border: none; border-radius: 8px; }
+  #cancelNum { background: #eeeeee; }
+  #setNum { background: var(--dark); color: #ffffff !important; }
+  #setNum:disabled { background: #cccccc; }
+  /* ---- 設定画面（入力とは別の画面） ---- */
+  #settings {
+    position: fixed; inset: 0; z-index: 30; background: var(--bg); display: flex; flex-direction: column; gap: 8px;
+    padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+  }
+  .sethead { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; }
+  .sethead h1 { font-size: 18px; margin: 0; }
+  #setClose { font-size: 15px; font-weight: bold; background: var(--accent); color: #ffffff; border: none; border-radius: 8px; padding: 10px 18px; }
+  #setBody { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+  .carry { display: flex; gap: 10px; align-items: center; background: var(--soft); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: bold; }
+  .carry input { width: 24px; height: 24px; flex: 0 0 auto; accent-color: var(--accent); }
+  .carry small { display: block; font-size: 11px; font-weight: normal; color: var(--muted); margin-top: 2px; }
+  .mode { background: var(--soft); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .mode .seg { background: var(--line); }
+  .mode .setnote { margin: 0; }
+  .modeTitle { font-size: 14px; font-weight: bold; }
+  .modeTitle small { font-size: 11px; font-weight: normal; color: var(--muted); margin-left: 8px; }
+  .setnote { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 4px 2px 0; }
+  .wl { display: flex; flex-direction: column; gap: 4px; }
+  .wrow { display: flex; gap: 4px; align-items: center; }
+  .wrow span { flex: 1; min-width: 0; font-size: 15px; font-weight: bold; padding: 9px 10px; background: var(--soft); border-radius: 8px; overflow-wrap: anywhere; }
+  .wrow button { flex: 0 0 42px; height: 38px; border: none; border-radius: 8px; background: var(--soft); font-size: 15px; font-weight: bold; }
+  .wrow button:disabled { opacity: .3; }
+  .wrow button.del { color: #777777; }
+  .wrow button.del.arm { flex-basis: 64px; background: var(--accent); color: #ffffff; font-size: 13px; }
+  #setBody .row { margin-top: 6px; }
+  #resetWords { display: block; margin: 18px auto 0; font-size: 12px; background: none; border: none; color: #aaaaaa; text-decoration: underline; }
+  #resetWords.arm { color: var(--accent); font-weight: bold; }
+
+  #resetBtn { align-self: center; font-size: 11px; background: none; border: none; color: #aaaaaa; text-decoration: underline; }
+  #resetBtn.arm { color: var(--accent); font-weight: bold; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="mode-label">番号札モード（スマホ単独）</div>
+  <div id="progress"></div>
+  <div id="number"></div>
+  <div id="meta"></div>
+  <div id="qrwrap"><div id="qrcode"></div><div id="qrcode2" aria-hidden="true"></div></div>
+  <div id="memo"></div>
+</div>
+
+<div id="subrow">
+  <button id="stateBtn">状態を入れる</button>
+  <button id="jumpToggle">番号を指定</button>
+  <button id="setBtn">設定</button>
+</div>
+<div id="btnrow">
+  <button id="prevBtn">← 戻る</button>
+  <button id="nextBtn">次へ →</button>
+</div>
+
+<div id="stateSheet" class="overlay" hidden>
+  <div class="sheet">
+    <div id="sheetMeta" hidden></div>
+    <div id="preview"></div>
+    <div id="tools">
+      <button id="sepBtn" title="次の行へ">改行 ↵</button>
+      <button id="undoBtn">1つ消す</button>
+      <button id="copyPrevBtn">前と同じ</button>
+      <button id="clearBtn">全消し</button>
+    </div>
+    <textarea id="note" rows="2" placeholder="自由記載（なんでも書けます。音声入力も可）" aria-label="自由記載"></textarea>
+    <div id="tabs" class="seg" role="tablist">
+      <button id="tabBack" role="tab" aria-selected="true">状態</button>
+      <button id="tabFront" role="tab" aria-selected="false">型式・倉庫・サイズ</button>
+    </div>
+    <div id="words">
+      <div id="paneBack"></div>
+      <div id="paneFront" hidden></div>
+    </div>
+    <button id="doneBtn">できた（撮影へ）</button>
+  </div>
+</div>
+
+<div id="mapSheet" class="overlay" hidden>
+  <div class="sheet">
+    <div class="maphead">
+      <b>地図から倉庫を選ぶ</b>
+      <button id="mapOut" aria-label="小さく">－</button>
+      <button id="mapIn" aria-label="大きく">＋</button>
+    </div>
+    <div id="mapBox"></div>
+    <button id="mapClose">閉じる</button>
+  </div>
+</div>
+
+<div id="numModal" class="overlay" hidden>
+  <div class="sheet">
+    <p id="numTitle">番号を直接指定して進める</p>
+    <div class="idline">
+      <button id="preChip" aria-label="記号を変える"><small>記号</small><b id="preChipVal">C</b><small>変える</small></button>
+      <div id="idShow" aria-live="polite"><span id="idPre">C</span><span id="idNum"></span></div>
+    </div>
+    <div id="digits" class="kp" aria-label="番号"></div>
+    <div id="letters" class="kp" aria-label="記号" hidden></div>
+    <div class="btns">
+      <button id="cancelNum">キャンセル</button>
+      <button id="setNum" disabled>設定</button>
+    </div>
+    <button id="resetBtn" hidden>入力した控えを全部消して最初から</button>
+  </div>
+</div>
+
+<div id="toast" role="status" hidden><span id="toastMsg"></span><button id="toastUndo">元に戻す</button></div>
+
+<div id="settings" hidden>
+  <div class="sethead">
+    <h1>設定</h1>
+    <button id="setClose">閉じる</button>
+  </div>
+  <div class="mode">
+    <div class="modeTitle">撮り方<small>このスマホだけの設定です。使う人ごとに選べます</small></div>
+    <div class="seg" role="radiogroup" aria-label="撮り方">
+      <button id="modeNormal" role="radio" aria-selected="true">いつもの（番号だけ）</button>
+      <button id="modeSep" role="radio" aria-selected="false">区切りAをはさむ</button>
+    </div>
+    <p class="setnote" id="modeNote"></p>
+  </div>
+  <label class="carry" for="supChk">
+    <input id="supChk" type="checkbox">
+    <span>出品サポート：データQRも出す<small>管理番号QRの右に、型式・倉庫・サイズ・状態を入れた小さなQRを足します（出品アシスタントが写真から自動で読みます）。管理番号QRは今までと同じです。ふだんはオフのままで大丈夫です</small></span>
+  </label>
+  <label class="carry" for="carryChk">
+    <input id="carryChk" type="checkbox">
+    <span>型式を次の番号へ引き継ぐ<small>倉庫・サイズ・状態は番号ごとに空から始まります</small></span>
+  </label>
+  <p class="setnote">番号が消えないように：iPhoneは Safari の共有ボタン →「ホーム画面に追加」で作ったアイコンから開いてください（Safariで開くと、7日ほど使わないと番号が消えることがあります）。</p>
+  <div class="seg" role="tablist">
+    <button id="setTabWords" role="tab" aria-selected="true">状態の言葉</button>
+    <button id="setTabModels" role="tab" aria-selected="false">型式</button>
+  </div>
+  <div id="setBody"></div>
+</div>
+
+<script>
+//---------------------------------------------------------------------
+//
+// QR Code Generator for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//  http://www.opensource.org/licenses/mit-license.php
+//
+// The word 'QR Code' is registered trademark of
+// DENSO WAVE INCORPORATED
+//  http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+
+var qrcode = function() {
+
+  //---------------------------------------------------------------------
+  // qrcode
+  //---------------------------------------------------------------------
+
+  /**
+   * qrcode
+   * @param typeNumber 1 to 40
+   * @param errorCorrectionLevel 'L','M','Q','H'
+   */
+  var qrcode = function(typeNumber, errorCorrectionLevel) {
+
+    var PAD0 = 0xEC;
+    var PAD1 = 0x11;
+
+    var _typeNumber = typeNumber;
+    var _errorCorrectionLevel = QRErrorCorrectionLevel[errorCorrectionLevel];
+    var _modules = null;
+    var _moduleCount = 0;
+    var _dataCache = null;
+    var _dataList = [];
+
+    var _this = {};
+
+    var makeImpl = function(test, maskPattern) {
+
+      _moduleCount = _typeNumber * 4 + 17;
+      _modules = function(moduleCount) {
+        var modules = new Array(moduleCount);
+        for (var row = 0; row < moduleCount; row += 1) {
+          modules[row] = new Array(moduleCount);
+          for (var col = 0; col < moduleCount; col += 1) {
+            modules[row][col] = null;
+          }
+        }
+        return modules;
+      }(_moduleCount);
+
+      setupPositionProbePattern(0, 0);
+      setupPositionProbePattern(_moduleCount - 7, 0);
+      setupPositionProbePattern(0, _moduleCount - 7);
+      setupPositionAdjustPattern();
+      setupTimingPattern();
+      setupTypeInfo(test, maskPattern);
+
+      if (_typeNumber >= 7) {
+        setupTypeNumber(test);
+      }
+
+      if (_dataCache == null) {
+        _dataCache = createData(_typeNumber, _errorCorrectionLevel, _dataList);
+      }
+
+      mapData(_dataCache, maskPattern);
+    };
+
+    var setupPositionProbePattern = function(row, col) {
+
+      for (var r = -1; r <= 7; r += 1) {
+
+        if (row + r <= -1 || _moduleCount <= row + r) continue;
+
+        for (var c = -1; c <= 7; c += 1) {
+
+          if (col + c <= -1 || _moduleCount <= col + c) continue;
+
+          if ( (0 <= r && r <= 6 && (c == 0 || c == 6) )
+              || (0 <= c && c <= 6 && (r == 0 || r == 6) )
+              || (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+            _modules[row + r][col + c] = true;
+          } else {
+            _modules[row + r][col + c] = false;
+          }
+        }
+      }
+    };
+
+    var getBestMaskPattern = function() {
+
+      var minLostPoint = 0;
+      var pattern = 0;
+
+      for (var i = 0; i < 8; i += 1) {
+
+        makeImpl(true, i);
+
+        var lostPoint = QRUtil.getLostPoint(_this);
+
+        if (i == 0 || minLostPoint > lostPoint) {
+          minLostPoint = lostPoint;
+          pattern = i;
+        }
+      }
+
+      return pattern;
+    };
+
+    var setupTimingPattern = function() {
+
+      for (var r = 8; r < _moduleCount - 8; r += 1) {
+        if (_modules[r][6] != null) {
+          continue;
+        }
+        _modules[r][6] = (r % 2 == 0);
+      }
+
+      for (var c = 8; c < _moduleCount - 8; c += 1) {
+        if (_modules[6][c] != null) {
+          continue;
+        }
+        _modules[6][c] = (c % 2 == 0);
+      }
+    };
+
+    var setupPositionAdjustPattern = function() {
+
+      var pos = QRUtil.getPatternPosition(_typeNumber);
+
+      for (var i = 0; i < pos.length; i += 1) {
+
+        for (var j = 0; j < pos.length; j += 1) {
+
+          var row = pos[i];
+          var col = pos[j];
+
+          if (_modules[row][col] != null) {
+            continue;
+          }
+
+          for (var r = -2; r <= 2; r += 1) {
+
+            for (var c = -2; c <= 2; c += 1) {
+
+              if (r == -2 || r == 2 || c == -2 || c == 2
+                  || (r == 0 && c == 0) ) {
+                _modules[row + r][col + c] = true;
+              } else {
+                _modules[row + r][col + c] = false;
+              }
+            }
+          }
+        }
+      }
+    };
+
+    var setupTypeNumber = function(test) {
+
+      var bits = QRUtil.getBCHTypeNumber(_typeNumber);
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[Math.floor(i / 3)][i % 3 + _moduleCount - 8 - 3] = mod;
+      }
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[i % 3 + _moduleCount - 8 - 3][Math.floor(i / 3)] = mod;
+      }
+    };
+
+    var setupTypeInfo = function(test, maskPattern) {
+
+      var data = (_errorCorrectionLevel << 3) | maskPattern;
+      var bits = QRUtil.getBCHTypeInfo(data);
+
+      // vertical
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 6) {
+          _modules[i][8] = mod;
+        } else if (i < 8) {
+          _modules[i + 1][8] = mod;
+        } else {
+          _modules[_moduleCount - 15 + i][8] = mod;
+        }
+      }
+
+      // horizontal
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 8) {
+          _modules[8][_moduleCount - i - 1] = mod;
+        } else if (i < 9) {
+          _modules[8][15 - i - 1 + 1] = mod;
+        } else {
+          _modules[8][15 - i - 1] = mod;
+        }
+      }
+
+      // fixed module
+      _modules[_moduleCount - 8][8] = (!test);
+    };
+
+    var mapData = function(data, maskPattern) {
+
+      var inc = -1;
+      var row = _moduleCount - 1;
+      var bitIndex = 7;
+      var byteIndex = 0;
+      var maskFunc = QRUtil.getMaskFunction(maskPattern);
+
+      for (var col = _moduleCount - 1; col > 0; col -= 2) {
+
+        if (col == 6) col -= 1;
+
+        while (true) {
+
+          for (var c = 0; c < 2; c += 1) {
+
+            if (_modules[row][col - c] == null) {
+
+              var dark = false;
+
+              if (byteIndex < data.length) {
+                dark = ( ( (data[byteIndex] >>> bitIndex) & 1) == 1);
+              }
+
+              var mask = maskFunc(row, col - c);
+
+              if (mask) {
+                dark = !dark;
+              }
+
+              _modules[row][col - c] = dark;
+              bitIndex -= 1;
+
+              if (bitIndex == -1) {
+                byteIndex += 1;
+                bitIndex = 7;
+              }
+            }
+          }
+
+          row += inc;
+
+          if (row < 0 || _moduleCount <= row) {
+            row -= inc;
+            inc = -inc;
+            break;
+          }
+        }
+      }
+    };
+
+    var createBytes = function(buffer, rsBlocks) {
+
+      var offset = 0;
+
+      var maxDcCount = 0;
+      var maxEcCount = 0;
+
+      var dcdata = new Array(rsBlocks.length);
+      var ecdata = new Array(rsBlocks.length);
+
+      for (var r = 0; r < rsBlocks.length; r += 1) {
+
+        var dcCount = rsBlocks[r].dataCount;
+        var ecCount = rsBlocks[r].totalCount - dcCount;
+
+        maxDcCount = Math.max(maxDcCount, dcCount);
+        maxEcCount = Math.max(maxEcCount, ecCount);
+
+        dcdata[r] = new Array(dcCount);
+
+        for (var i = 0; i < dcdata[r].length; i += 1) {
+          dcdata[r][i] = 0xff & buffer.getBuffer()[i + offset];
+        }
+        offset += dcCount;
+
+        var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+        var rawPoly = qrPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+        var modPoly = rawPoly.mod(rsPoly);
+        ecdata[r] = new Array(rsPoly.getLength() - 1);
+        for (var i = 0; i < ecdata[r].length; i += 1) {
+          var modIndex = i + modPoly.getLength() - ecdata[r].length;
+          ecdata[r][i] = (modIndex >= 0)? modPoly.getAt(modIndex) : 0;
+        }
+      }
+
+      var totalCodeCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalCodeCount += rsBlocks[i].totalCount;
+      }
+
+      var data = new Array(totalCodeCount);
+      var index = 0;
+
+      for (var i = 0; i < maxDcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < dcdata[r].length) {
+            data[index] = dcdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      for (var i = 0; i < maxEcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < ecdata[r].length) {
+            data[index] = ecdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      return data;
+    };
+
+    var createData = function(typeNumber, errorCorrectionLevel, dataList) {
+
+      var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectionLevel);
+
+      var buffer = qrBitBuffer();
+
+      for (var i = 0; i < dataList.length; i += 1) {
+        var data = dataList[i];
+        buffer.put(data.getMode(), 4);
+        buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+        data.write(buffer);
+      }
+
+      // calc num max data.
+      var totalDataCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalDataCount += rsBlocks[i].dataCount;
+      }
+
+      if (buffer.getLengthInBits() > totalDataCount * 8) {
+        throw 'code length overflow. ('
+          + buffer.getLengthInBits()
+          + '>'
+          + totalDataCount * 8
+          + ')';
+      }
+
+      // end code
+      if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+        buffer.put(0, 4);
+      }
+
+      // padding
+      while (buffer.getLengthInBits() % 8 != 0) {
+        buffer.putBit(false);
+      }
+
+      // padding
+      while (true) {
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD0, 8);
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD1, 8);
+      }
+
+      return createBytes(buffer, rsBlocks);
+    };
+
+    _this.addData = function(data, mode) {
+
+      mode = mode || 'Byte';
+
+      var newData = null;
+
+      switch(mode) {
+      case 'Numeric' :
+        newData = qrNumber(data);
+        break;
+      case 'Alphanumeric' :
+        newData = qrAlphaNum(data);
+        break;
+      case 'Byte' :
+        newData = qr8BitByte(data);
+        break;
+      case 'Kanji' :
+        newData = qrKanji(data);
+        break;
+      default :
+        throw 'mode:' + mode;
+      }
+
+      _dataList.push(newData);
+      _dataCache = null;
+    };
+
+    _this.isDark = function(row, col) {
+      if (row < 0 || _moduleCount <= row || col < 0 || _moduleCount <= col) {
+        throw row + ',' + col;
+      }
+      return _modules[row][col];
+    };
+
+    _this.getModuleCount = function() {
+      return _moduleCount;
+    };
+
+    _this.make = function() {
+      if (_typeNumber < 1) {
+        var typeNumber = 1;
+
+        for (; typeNumber < 40; typeNumber++) {
+          var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, _errorCorrectionLevel);
+          var buffer = qrBitBuffer();
+
+          for (var i = 0; i < _dataList.length; i++) {
+            var data = _dataList[i];
+            buffer.put(data.getMode(), 4);
+            buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+            data.write(buffer);
+          }
+
+          var totalDataCount = 0;
+          for (var i = 0; i < rsBlocks.length; i++) {
+            totalDataCount += rsBlocks[i].dataCount;
+          }
+
+          if (buffer.getLengthInBits() <= totalDataCount * 8) {
+            break;
+          }
+        }
+
+        _typeNumber = typeNumber;
+      }
+
+      makeImpl(false, getBestMaskPattern() );
+    };
+
+    _this.createTableTag = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var qrHtml = '';
+
+      qrHtml += '<table style="';
+      qrHtml += ' border-width: 0px; border-style: none;';
+      qrHtml += ' border-collapse: collapse;';
+      qrHtml += ' padding: 0px; margin: ' + margin + 'px;';
+      qrHtml += '">';
+      qrHtml += '<tbody>';
+
+      for (var r = 0; r < _this.getModuleCount(); r += 1) {
+
+        qrHtml += '<tr>';
+
+        for (var c = 0; c < _this.getModuleCount(); c += 1) {
+          qrHtml += '<td style="';
+          qrHtml += ' border-width: 0px; border-style: none;';
+          qrHtml += ' border-collapse: collapse;';
+          qrHtml += ' padding: 0px; margin: 0px;';
+          qrHtml += ' width: ' + cellSize + 'px;';
+          qrHtml += ' height: ' + cellSize + 'px;';
+          qrHtml += ' background-color: ';
+          qrHtml += _this.isDark(r, c)? '#000000' : '#ffffff';
+          qrHtml += ';';
+          qrHtml += '"/>';
+        }
+
+        qrHtml += '</tr>';
+      }
+
+      qrHtml += '</tbody>';
+      qrHtml += '</table>';
+
+      return qrHtml;
+    };
+
+    _this.createSvgTag = function(cellSize, margin, alt, title) {
+
+      var opts = {};
+      if (typeof arguments[0] == 'object') {
+        // Called by options.
+        opts = arguments[0];
+        // overwrite cellSize and margin.
+        cellSize = opts.cellSize;
+        margin = opts.margin;
+        alt = opts.alt;
+        title = opts.title;
+      }
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      // Compose alt property surrogate
+      alt = (typeof alt === 'string') ? {text: alt} : alt || {};
+      alt.text = alt.text || null;
+      alt.id = (alt.text) ? alt.id || 'qrcode-description' : null;
+
+      // Compose title property surrogate
+      title = (typeof title === 'string') ? {text: title} : title || {};
+      title.text = title.text || null;
+      title.id = (title.text) ? title.id || 'qrcode-title' : null;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var c, mc, r, mr, qrSvg='', rect;
+
+      rect = 'l' + cellSize + ',0 0,' + cellSize +
+        ' -' + cellSize + ',0 0,-' + cellSize + 'z ';
+
+      qrSvg += '<svg version="1.1" xmlns="http://www.w3.org/2000/svg"';
+      qrSvg += !opts.scalable ? ' width="' + size + 'px" height="' + size + 'px"' : '';
+      qrSvg += ' viewBox="0 0 ' + size + ' ' + size + '" ';
+      qrSvg += ' preserveAspectRatio="xMinYMin meet"';
+      qrSvg += (title.text || alt.text) ? ' role="img" aria-labelledby="' +
+          escapeXml([title.id, alt.id].join(' ').trim() ) + '"' : '';
+      qrSvg += '>';
+      qrSvg += (title.text) ? '<title id="' + escapeXml(title.id) + '">' +
+          escapeXml(title.text) + '</title>' : '';
+      qrSvg += (alt.text) ? '<description id="' + escapeXml(alt.id) + '">' +
+          escapeXml(alt.text) + '</description>' : '';
+      qrSvg += '<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>';
+      qrSvg += '<path d="';
+
+      for (r = 0; r < _this.getModuleCount(); r += 1) {
+        mr = r * cellSize + margin;
+        for (c = 0; c < _this.getModuleCount(); c += 1) {
+          if (_this.isDark(r, c) ) {
+            mc = c*cellSize+margin;
+            qrSvg += 'M' + mc + ',' + mr + rect;
+          }
+        }
+      }
+
+      qrSvg += '" stroke="transparent" fill="black"/>';
+      qrSvg += '</svg>';
+
+      return qrSvg;
+    };
+
+    _this.createDataURL = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      return createDataURL(size, size, function(x, y) {
+        if (min <= x && x < max && min <= y && y < max) {
+          var c = Math.floor( (x - min) / cellSize);
+          var r = Math.floor( (y - min) / cellSize);
+          return _this.isDark(r, c)? 0 : 1;
+        } else {
+          return 1;
+        }
+      } );
+    };
+
+    _this.createImgTag = function(cellSize, margin, alt) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+
+      var img = '';
+      img += '<img';
+      img += '\u0020src="';
+      img += _this.createDataURL(cellSize, margin);
+      img += '"';
+      img += '\u0020width="';
+      img += size;
+      img += '"';
+      img += '\u0020height="';
+      img += size;
+      img += '"';
+      if (alt) {
+        img += '\u0020alt="';
+        img += escapeXml(alt);
+        img += '"';
+      }
+      img += '/>';
+
+      return img;
+    };
+
+    var escapeXml = function(s) {
+      var escaped = '';
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charAt(i);
+        switch(c) {
+        case '<': escaped += '&lt;'; break;
+        case '>': escaped += '&gt;'; break;
+        case '&': escaped += '&amp;'; break;
+        case '"': escaped += '&quot;'; break;
+        default : escaped += c; break;
+        }
+      }
+      return escaped;
+    };
+
+    var _createHalfASCII = function(margin) {
+      var cellSize = 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r1, r2, p;
+
+      var blocks = {
+        '██': '█',
+        '█ ': '▀',
+        ' █': '▄',
+        '  ': ' '
+      };
+
+      var blocksLastLineNoMargin = {
+        '██': '▀',
+        '█ ': '▀',
+        ' █': ' ',
+        '  ': ' '
+      };
+
+      var ascii = '';
+      for (y = 0; y < size; y += 2) {
+        r1 = Math.floor((y - min) / cellSize);
+        r2 = Math.floor((y + 1 - min) / cellSize);
+        for (x = 0; x < size; x += 1) {
+          p = '█';
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r1, Math.floor((x - min) / cellSize))) {
+            p = ' ';
+          }
+
+          if (min <= x && x < max && min <= y+1 && y+1 < max && _this.isDark(r2, Math.floor((x - min) / cellSize))) {
+            p += ' ';
+          }
+          else {
+            p += '█';
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          ascii += (margin < 1 && y+1 >= max) ? blocksLastLineNoMargin[p] : blocks[p];
+        }
+
+        ascii += '\n';
+      }
+
+      if (size % 2 && margin > 0) {
+        return ascii.substring(0, ascii.length - size - 1) + Array(size+1).join('▀');
+      }
+
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.createASCII = function(cellSize, margin) {
+      cellSize = cellSize || 1;
+
+      if (cellSize < 2) {
+        return _createHalfASCII(margin);
+      }
+
+      cellSize -= 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r, p;
+
+      var white = Array(cellSize+1).join('██');
+      var black = Array(cellSize+1).join('  ');
+
+      var ascii = '';
+      var line = '';
+      for (y = 0; y < size; y += 1) {
+        r = Math.floor( (y - min) / cellSize);
+        line = '';
+        for (x = 0; x < size; x += 1) {
+          p = 1;
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r, Math.floor((x - min) / cellSize))) {
+            p = 0;
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          line += p ? white : black;
+        }
+
+        for (r = 0; r < cellSize; r += 1) {
+          ascii += line + '\n';
+        }
+      }
+
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.renderTo2dContext = function(context, cellSize) {
+      cellSize = cellSize || 2;
+      var length = _this.getModuleCount();
+      for (var row = 0; row < length; row++) {
+        for (var col = 0; col < length; col++) {
+          context.fillStyle = _this.isDark(row, col) ? 'black' : 'white';
+          context.fillRect(row * cellSize, col * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrcode.stringToBytes
+  //---------------------------------------------------------------------
+
+  qrcode.stringToBytesFuncs = {
+    'default' : function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        bytes.push(c & 0xff);
+      }
+      return bytes;
+    }
+  };
+
+  qrcode.stringToBytes = qrcode.stringToBytesFuncs['default'];
+
+  //---------------------------------------------------------------------
+  // qrcode.createStringToBytes
+  //---------------------------------------------------------------------
+
+  /**
+   * @param unicodeData base64 string of byte array.
+   * [16bit Unicode],[16bit Bytes], ...
+   * @param numChars
+   */
+  qrcode.createStringToBytes = function(unicodeData, numChars) {
+
+    // create conversion map.
+
+    var unicodeMap = function() {
+
+      var bin = base64DecodeInputStream(unicodeData);
+      var read = function() {
+        var b = bin.read();
+        if (b == -1) throw 'eof';
+        return b;
+      };
+
+      var count = 0;
+      var unicodeMap = {};
+      while (true) {
+        var b0 = bin.read();
+        if (b0 == -1) break;
+        var b1 = read();
+        var b2 = read();
+        var b3 = read();
+        var k = String.fromCharCode( (b0 << 8) | b1);
+        var v = (b2 << 8) | b3;
+        unicodeMap[k] = v;
+        count += 1;
+      }
+      if (count != numChars) {
+        throw count + ' != ' + numChars;
+      }
+
+      return unicodeMap;
+    }();
+
+    var unknownChar = '?'.charCodeAt(0);
+
+    return function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        if (c < 128) {
+          bytes.push(c);
+        } else {
+          var b = unicodeMap[s.charAt(i)];
+          if (typeof b == 'number') {
+            if ( (b & 0xff) == b) {
+              // 1byte
+              bytes.push(b);
+            } else {
+              // 2bytes
+              bytes.push(b >>> 8);
+              bytes.push(b & 0xff);
+            }
+          } else {
+            bytes.push(unknownChar);
+          }
+        }
+      }
+      return bytes;
+    };
+  };
+
+  //---------------------------------------------------------------------
+  // QRMode
+  //---------------------------------------------------------------------
+
+  var QRMode = {
+    MODE_NUMBER :    1 << 0,
+    MODE_ALPHA_NUM : 1 << 1,
+    MODE_8BIT_BYTE : 1 << 2,
+    MODE_KANJI :     1 << 3
+  };
+
+  //---------------------------------------------------------------------
+  // QRErrorCorrectionLevel
+  //---------------------------------------------------------------------
+
+  var QRErrorCorrectionLevel = {
+    L : 1,
+    M : 0,
+    Q : 3,
+    H : 2
+  };
+
+  //---------------------------------------------------------------------
+  // QRMaskPattern
+  //---------------------------------------------------------------------
+
+  var QRMaskPattern = {
+    PATTERN000 : 0,
+    PATTERN001 : 1,
+    PATTERN010 : 2,
+    PATTERN011 : 3,
+    PATTERN100 : 4,
+    PATTERN101 : 5,
+    PATTERN110 : 6,
+    PATTERN111 : 7
+  };
+
+  //---------------------------------------------------------------------
+  // QRUtil
+  //---------------------------------------------------------------------
+
+  var QRUtil = function() {
+
+    var PATTERN_POSITION_TABLE = [
+      [],
+      [6, 18],
+      [6, 22],
+      [6, 26],
+      [6, 30],
+      [6, 34],
+      [6, 22, 38],
+      [6, 24, 42],
+      [6, 26, 46],
+      [6, 28, 50],
+      [6, 30, 54],
+      [6, 32, 58],
+      [6, 34, 62],
+      [6, 26, 46, 66],
+      [6, 26, 48, 70],
+      [6, 26, 50, 74],
+      [6, 30, 54, 78],
+      [6, 30, 56, 82],
+      [6, 30, 58, 86],
+      [6, 34, 62, 90],
+      [6, 28, 50, 72, 94],
+      [6, 26, 50, 74, 98],
+      [6, 30, 54, 78, 102],
+      [6, 28, 54, 80, 106],
+      [6, 32, 58, 84, 110],
+      [6, 30, 58, 86, 114],
+      [6, 34, 62, 90, 118],
+      [6, 26, 50, 74, 98, 122],
+      [6, 30, 54, 78, 102, 126],
+      [6, 26, 52, 78, 104, 130],
+      [6, 30, 56, 82, 108, 134],
+      [6, 34, 60, 86, 112, 138],
+      [6, 30, 58, 86, 114, 142],
+      [6, 34, 62, 90, 118, 146],
+      [6, 30, 54, 78, 102, 126, 150],
+      [6, 24, 50, 76, 102, 128, 154],
+      [6, 28, 54, 80, 106, 132, 158],
+      [6, 32, 58, 84, 110, 136, 162],
+      [6, 26, 54, 82, 110, 138, 166],
+      [6, 30, 58, 86, 114, 142, 170]
+    ];
+    var G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0);
+    var G18 = (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0);
+    var G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1);
+
+    var _this = {};
+
+    var getBCHDigit = function(data) {
+      var digit = 0;
+      while (data != 0) {
+        digit += 1;
+        data >>>= 1;
+      }
+      return digit;
+    };
+
+    _this.getBCHTypeInfo = function(data) {
+      var d = data << 10;
+      while (getBCHDigit(d) - getBCHDigit(G15) >= 0) {
+        d ^= (G15 << (getBCHDigit(d) - getBCHDigit(G15) ) );
+      }
+      return ( (data << 10) | d) ^ G15_MASK;
+    };
+
+    _this.getBCHTypeNumber = function(data) {
+      var d = data << 12;
+      while (getBCHDigit(d) - getBCHDigit(G18) >= 0) {
+        d ^= (G18 << (getBCHDigit(d) - getBCHDigit(G18) ) );
+      }
+      return (data << 12) | d;
+    };
+
+    _this.getPatternPosition = function(typeNumber) {
+      return PATTERN_POSITION_TABLE[typeNumber - 1];
+    };
+
+    _this.getMaskFunction = function(maskPattern) {
+
+      switch (maskPattern) {
+
+      case QRMaskPattern.PATTERN000 :
+        return function(i, j) { return (i + j) % 2 == 0; };
+      case QRMaskPattern.PATTERN001 :
+        return function(i, j) { return i % 2 == 0; };
+      case QRMaskPattern.PATTERN010 :
+        return function(i, j) { return j % 3 == 0; };
+      case QRMaskPattern.PATTERN011 :
+        return function(i, j) { return (i + j) % 3 == 0; };
+      case QRMaskPattern.PATTERN100 :
+        return function(i, j) { return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 == 0; };
+      case QRMaskPattern.PATTERN101 :
+        return function(i, j) { return (i * j) % 2 + (i * j) % 3 == 0; };
+      case QRMaskPattern.PATTERN110 :
+        return function(i, j) { return ( (i * j) % 2 + (i * j) % 3) % 2 == 0; };
+      case QRMaskPattern.PATTERN111 :
+        return function(i, j) { return ( (i * j) % 3 + (i + j) % 2) % 2 == 0; };
+
+      default :
+        throw 'bad maskPattern:' + maskPattern;
+      }
+    };
+
+    _this.getErrorCorrectPolynomial = function(errorCorrectLength) {
+      var a = qrPolynomial([1], 0);
+      for (var i = 0; i < errorCorrectLength; i += 1) {
+        a = a.multiply(qrPolynomial([1, QRMath.gexp(i)], 0) );
+      }
+      return a;
+    };
+
+    _this.getLengthInBits = function(mode, type) {
+
+      if (1 <= type && type < 10) {
+
+        // 1 - 9
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 10;
+        case QRMode.MODE_ALPHA_NUM : return 9;
+        case QRMode.MODE_8BIT_BYTE : return 8;
+        case QRMode.MODE_KANJI     : return 8;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else if (type < 27) {
+
+        // 10 - 26
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 12;
+        case QRMode.MODE_ALPHA_NUM : return 11;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 10;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else if (type < 41) {
+
+        // 27 - 40
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 14;
+        case QRMode.MODE_ALPHA_NUM : return 13;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 12;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else {
+        throw 'type:' + type;
+      }
+    };
+
+    _this.getLostPoint = function(qrcode) {
+
+      var moduleCount = qrcode.getModuleCount();
+
+      var lostPoint = 0;
+
+      // LEVEL1
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount; col += 1) {
+
+          var sameCount = 0;
+          var dark = qrcode.isDark(row, col);
+
+          for (var r = -1; r <= 1; r += 1) {
+
+            if (row + r < 0 || moduleCount <= row + r) {
+              continue;
+            }
+
+            for (var c = -1; c <= 1; c += 1) {
+
+              if (col + c < 0 || moduleCount <= col + c) {
+                continue;
+              }
+
+              if (r == 0 && c == 0) {
+                continue;
+              }
+
+              if (dark == qrcode.isDark(row + r, col + c) ) {
+                sameCount += 1;
+              }
+            }
+          }
+
+          if (sameCount > 5) {
+            lostPoint += (3 + sameCount - 5);
+          }
+        }
+      };
+
+      // LEVEL2
+
+      for (var row = 0; row < moduleCount - 1; row += 1) {
+        for (var col = 0; col < moduleCount - 1; col += 1) {
+          var count = 0;
+          if (qrcode.isDark(row, col) ) count += 1;
+          if (qrcode.isDark(row + 1, col) ) count += 1;
+          if (qrcode.isDark(row, col + 1) ) count += 1;
+          if (qrcode.isDark(row + 1, col + 1) ) count += 1;
+          if (count == 0 || count == 4) {
+            lostPoint += 3;
+          }
+        }
+      }
+
+      // LEVEL3
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount - 6; col += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row, col + 1)
+              &&  qrcode.isDark(row, col + 2)
+              &&  qrcode.isDark(row, col + 3)
+              &&  qrcode.isDark(row, col + 4)
+              && !qrcode.isDark(row, col + 5)
+              &&  qrcode.isDark(row, col + 6) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount - 6; row += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row + 1, col)
+              &&  qrcode.isDark(row + 2, col)
+              &&  qrcode.isDark(row + 3, col)
+              &&  qrcode.isDark(row + 4, col)
+              && !qrcode.isDark(row + 5, col)
+              &&  qrcode.isDark(row + 6, col) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      // LEVEL4
+
+      var darkCount = 0;
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount; row += 1) {
+          if (qrcode.isDark(row, col) ) {
+            darkCount += 1;
+          }
+        }
+      }
+
+      var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+      lostPoint += ratio * 10;
+
+      return lostPoint;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // QRMath
+  //---------------------------------------------------------------------
+
+  var QRMath = function() {
+
+    var EXP_TABLE = new Array(256);
+    var LOG_TABLE = new Array(256);
+
+    // initialize tables
+    for (var i = 0; i < 8; i += 1) {
+      EXP_TABLE[i] = 1 << i;
+    }
+    for (var i = 8; i < 256; i += 1) {
+      EXP_TABLE[i] = EXP_TABLE[i - 4]
+        ^ EXP_TABLE[i - 5]
+        ^ EXP_TABLE[i - 6]
+        ^ EXP_TABLE[i - 8];
+    }
+    for (var i = 0; i < 255; i += 1) {
+      LOG_TABLE[EXP_TABLE[i] ] = i;
+    }
+
+    var _this = {};
+
+    _this.glog = function(n) {
+
+      if (n < 1) {
+        throw 'glog(' + n + ')';
+      }
+
+      return LOG_TABLE[n];
+    };
+
+    _this.gexp = function(n) {
+
+      while (n < 0) {
+        n += 255;
+      }
+
+      while (n >= 256) {
+        n -= 255;
+      }
+
+      return EXP_TABLE[n];
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrPolynomial
+  //---------------------------------------------------------------------
+
+  function qrPolynomial(num, shift) {
+
+    if (typeof num.length == 'undefined') {
+      throw num.length + '/' + shift;
+    }
+
+    var _num = function() {
+      var offset = 0;
+      while (offset < num.length && num[offset] == 0) {
+        offset += 1;
+      }
+      var _num = new Array(num.length - offset + shift);
+      for (var i = 0; i < num.length - offset; i += 1) {
+        _num[i] = num[i + offset];
+      }
+      return _num;
+    }();
+
+    var _this = {};
+
+    _this.getAt = function(index) {
+      return _num[index];
+    };
+
+    _this.getLength = function() {
+      return _num.length;
+    };
+
+    _this.multiply = function(e) {
+
+      var num = new Array(_this.getLength() + e.getLength() - 1);
+
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        for (var j = 0; j < e.getLength(); j += 1) {
+          num[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i) ) + QRMath.glog(e.getAt(j) ) );
+        }
+      }
+
+      return qrPolynomial(num, 0);
+    };
+
+    _this.mod = function(e) {
+
+      if (_this.getLength() - e.getLength() < 0) {
+        return _this;
+      }
+
+      var ratio = QRMath.glog(_this.getAt(0) ) - QRMath.glog(e.getAt(0) );
+
+      var num = new Array(_this.getLength() );
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        num[i] = _this.getAt(i);
+      }
+
+      for (var i = 0; i < e.getLength(); i += 1) {
+        num[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i) ) + ratio);
+      }
+
+      // recursive call
+      return qrPolynomial(num, 0).mod(e);
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // QRRSBlock
+  //---------------------------------------------------------------------
+
+  var QRRSBlock = function() {
+
+    var RS_BLOCK_TABLE = [
+
+      // L
+      // M
+      // Q
+      // H
+
+      // 1
+      [1, 26, 19],
+      [1, 26, 16],
+      [1, 26, 13],
+      [1, 26, 9],
+
+      // 2
+      [1, 44, 34],
+      [1, 44, 28],
+      [1, 44, 22],
+      [1, 44, 16],
+
+      // 3
+      [1, 70, 55],
+      [1, 70, 44],
+      [2, 35, 17],
+      [2, 35, 13],
+
+      // 4
+      [1, 100, 80],
+      [2, 50, 32],
+      [2, 50, 24],
+      [4, 25, 9],
+
+      // 5
+      [1, 134, 108],
+      [2, 67, 43],
+      [2, 33, 15, 2, 34, 16],
+      [2, 33, 11, 2, 34, 12],
+
+      // 6
+      [2, 86, 68],
+      [4, 43, 27],
+      [4, 43, 19],
+      [4, 43, 15],
+
+      // 7
+      [2, 98, 78],
+      [4, 49, 31],
+      [2, 32, 14, 4, 33, 15],
+      [4, 39, 13, 1, 40, 14],
+
+      // 8
+      [2, 121, 97],
+      [2, 60, 38, 2, 61, 39],
+      [4, 40, 18, 2, 41, 19],
+      [4, 40, 14, 2, 41, 15],
+
+      // 9
+      [2, 146, 116],
+      [3, 58, 36, 2, 59, 37],
+      [4, 36, 16, 4, 37, 17],
+      [4, 36, 12, 4, 37, 13],
+
+      // 10
+      [2, 86, 68, 2, 87, 69],
+      [4, 69, 43, 1, 70, 44],
+      [6, 43, 19, 2, 44, 20],
+      [6, 43, 15, 2, 44, 16],
+
+      // 11
+      [4, 101, 81],
+      [1, 80, 50, 4, 81, 51],
+      [4, 50, 22, 4, 51, 23],
+      [3, 36, 12, 8, 37, 13],
+
+      // 12
+      [2, 116, 92, 2, 117, 93],
+      [6, 58, 36, 2, 59, 37],
+      [4, 46, 20, 6, 47, 21],
+      [7, 42, 14, 4, 43, 15],
+
+      // 13
+      [4, 133, 107],
+      [8, 59, 37, 1, 60, 38],
+      [8, 44, 20, 4, 45, 21],
+      [12, 33, 11, 4, 34, 12],
+
+      // 14
+      [3, 145, 115, 1, 146, 116],
+      [4, 64, 40, 5, 65, 41],
+      [11, 36, 16, 5, 37, 17],
+      [11, 36, 12, 5, 37, 13],
+
+      // 15
+      [5, 109, 87, 1, 110, 88],
+      [5, 65, 41, 5, 66, 42],
+      [5, 54, 24, 7, 55, 25],
+      [11, 36, 12, 7, 37, 13],
+
+      // 16
+      [5, 122, 98, 1, 123, 99],
+      [7, 73, 45, 3, 74, 46],
+      [15, 43, 19, 2, 44, 20],
+      [3, 45, 15, 13, 46, 16],
+
+      // 17
+      [1, 135, 107, 5, 136, 108],
+      [10, 74, 46, 1, 75, 47],
+      [1, 50, 22, 15, 51, 23],
+      [2, 42, 14, 17, 43, 15],
+
+      // 18
+      [5, 150, 120, 1, 151, 121],
+      [9, 69, 43, 4, 70, 44],
+      [17, 50, 22, 1, 51, 23],
+      [2, 42, 14, 19, 43, 15],
+
+      // 19
+      [3, 141, 113, 4, 142, 114],
+      [3, 70, 44, 11, 71, 45],
+      [17, 47, 21, 4, 48, 22],
+      [9, 39, 13, 16, 40, 14],
+
+      // 20
+      [3, 135, 107, 5, 136, 108],
+      [3, 67, 41, 13, 68, 42],
+      [15, 54, 24, 5, 55, 25],
+      [15, 43, 15, 10, 44, 16],
+
+      // 21
+      [4, 144, 116, 4, 145, 117],
+      [17, 68, 42],
+      [17, 50, 22, 6, 51, 23],
+      [19, 46, 16, 6, 47, 17],
+
+      // 22
+      [2, 139, 111, 7, 140, 112],
+      [17, 74, 46],
+      [7, 54, 24, 16, 55, 25],
+      [34, 37, 13],
+
+      // 23
+      [4, 151, 121, 5, 152, 122],
+      [4, 75, 47, 14, 76, 48],
+      [11, 54, 24, 14, 55, 25],
+      [16, 45, 15, 14, 46, 16],
+
+      // 24
+      [6, 147, 117, 4, 148, 118],
+      [6, 73, 45, 14, 74, 46],
+      [11, 54, 24, 16, 55, 25],
+      [30, 46, 16, 2, 47, 17],
+
+      // 25
+      [8, 132, 106, 4, 133, 107],
+      [8, 75, 47, 13, 76, 48],
+      [7, 54, 24, 22, 55, 25],
+      [22, 45, 15, 13, 46, 16],
+
+      // 26
+      [10, 142, 114, 2, 143, 115],
+      [19, 74, 46, 4, 75, 47],
+      [28, 50, 22, 6, 51, 23],
+      [33, 46, 16, 4, 47, 17],
+
+      // 27
+      [8, 152, 122, 4, 153, 123],
+      [22, 73, 45, 3, 74, 46],
+      [8, 53, 23, 26, 54, 24],
+      [12, 45, 15, 28, 46, 16],
+
+      // 28
+      [3, 147, 117, 10, 148, 118],
+      [3, 73, 45, 23, 74, 46],
+      [4, 54, 24, 31, 55, 25],
+      [11, 45, 15, 31, 46, 16],
+
+      // 29
+      [7, 146, 116, 7, 147, 117],
+      [21, 73, 45, 7, 74, 46],
+      [1, 53, 23, 37, 54, 24],
+      [19, 45, 15, 26, 46, 16],
+
+      // 30
+      [5, 145, 115, 10, 146, 116],
+      [19, 75, 47, 10, 76, 48],
+      [15, 54, 24, 25, 55, 25],
+      [23, 45, 15, 25, 46, 16],
+
+      // 31
+      [13, 145, 115, 3, 146, 116],
+      [2, 74, 46, 29, 75, 47],
+      [42, 54, 24, 1, 55, 25],
+      [23, 45, 15, 28, 46, 16],
+
+      // 32
+      [17, 145, 115],
+      [10, 74, 46, 23, 75, 47],
+      [10, 54, 24, 35, 55, 25],
+      [19, 45, 15, 35, 46, 16],
+
+      // 33
+      [17, 145, 115, 1, 146, 116],
+      [14, 74, 46, 21, 75, 47],
+      [29, 54, 24, 19, 55, 25],
+      [11, 45, 15, 46, 46, 16],
+
+      // 34
+      [13, 145, 115, 6, 146, 116],
+      [14, 74, 46, 23, 75, 47],
+      [44, 54, 24, 7, 55, 25],
+      [59, 46, 16, 1, 47, 17],
+
+      // 35
+      [12, 151, 121, 7, 152, 122],
+      [12, 75, 47, 26, 76, 48],
+      [39, 54, 24, 14, 55, 25],
+      [22, 45, 15, 41, 46, 16],
+
+      // 36
+      [6, 151, 121, 14, 152, 122],
+      [6, 75, 47, 34, 76, 48],
+      [46, 54, 24, 10, 55, 25],
+      [2, 45, 15, 64, 46, 16],
+
+      // 37
+      [17, 152, 122, 4, 153, 123],
+      [29, 74, 46, 14, 75, 47],
+      [49, 54, 24, 10, 55, 25],
+      [24, 45, 15, 46, 46, 16],
+
+      // 38
+      [4, 152, 122, 18, 153, 123],
+      [13, 74, 46, 32, 75, 47],
+      [48, 54, 24, 14, 55, 25],
+      [42, 45, 15, 32, 46, 16],
+
+      // 39
+      [20, 147, 117, 4, 148, 118],
+      [40, 75, 47, 7, 76, 48],
+      [43, 54, 24, 22, 55, 25],
+      [10, 45, 15, 67, 46, 16],
+
+      // 40
+      [19, 148, 118, 6, 149, 119],
+      [18, 75, 47, 31, 76, 48],
+      [34, 54, 24, 34, 55, 25],
+      [20, 45, 15, 61, 46, 16]
+    ];
+
+    var qrRSBlock = function(totalCount, dataCount) {
+      var _this = {};
+      _this.totalCount = totalCount;
+      _this.dataCount = dataCount;
+      return _this;
+    };
+
+    var _this = {};
+
+    var getRsBlockTable = function(typeNumber, errorCorrectionLevel) {
+
+      switch(errorCorrectionLevel) {
+      case QRErrorCorrectionLevel.L :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+      case QRErrorCorrectionLevel.M :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+      case QRErrorCorrectionLevel.Q :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+      case QRErrorCorrectionLevel.H :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+      default :
+        return undefined;
+      }
+    };
+
+    _this.getRSBlocks = function(typeNumber, errorCorrectionLevel) {
+
+      var rsBlock = getRsBlockTable(typeNumber, errorCorrectionLevel);
+
+      if (typeof rsBlock == 'undefined') {
+        throw 'bad rs block @ typeNumber:' + typeNumber +
+            '/errorCorrectionLevel:' + errorCorrectionLevel;
+      }
+
+      var length = rsBlock.length / 3;
+
+      var list = [];
+
+      for (var i = 0; i < length; i += 1) {
+
+        var count = rsBlock[i * 3 + 0];
+        var totalCount = rsBlock[i * 3 + 1];
+        var dataCount = rsBlock[i * 3 + 2];
+
+        for (var j = 0; j < count; j += 1) {
+          list.push(qrRSBlock(totalCount, dataCount) );
+        }
+      }
+
+      return list;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrBitBuffer
+  //---------------------------------------------------------------------
+
+  var qrBitBuffer = function() {
+
+    var _buffer = [];
+    var _length = 0;
+
+    var _this = {};
+
+    _this.getBuffer = function() {
+      return _buffer;
+    };
+
+    _this.getAt = function(index) {
+      var bufIndex = Math.floor(index / 8);
+      return ( (_buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+    };
+
+    _this.put = function(num, length) {
+      for (var i = 0; i < length; i += 1) {
+        _this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+      }
+    };
+
+    _this.getLengthInBits = function() {
+      return _length;
+    };
+
+    _this.putBit = function(bit) {
+
+      var bufIndex = Math.floor(_length / 8);
+      if (_buffer.length <= bufIndex) {
+        _buffer.push(0);
+      }
+
+      if (bit) {
+        _buffer[bufIndex] |= (0x80 >>> (_length % 8) );
+      }
+
+      _length += 1;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrNumber
+  //---------------------------------------------------------------------
+
+  var qrNumber = function(data) {
+
+    var _mode = QRMode.MODE_NUMBER;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _data;
+
+      var i = 0;
+
+      while (i + 2 < data.length) {
+        buffer.put(strToNum(data.substring(i, i + 3) ), 10);
+        i += 3;
+      }
+
+      if (i < data.length) {
+        if (data.length - i == 1) {
+          buffer.put(strToNum(data.substring(i, i + 1) ), 4);
+        } else if (data.length - i == 2) {
+          buffer.put(strToNum(data.substring(i, i + 2) ), 7);
+        }
+      }
+    };
+
+    var strToNum = function(s) {
+      var num = 0;
+      for (var i = 0; i < s.length; i += 1) {
+        num = num * 10 + chatToNum(s.charAt(i) );
+      }
+      return num;
+    };
+
+    var chatToNum = function(c) {
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      }
+      throw 'illegal char :' + c;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrAlphaNum
+  //---------------------------------------------------------------------
+
+  var qrAlphaNum = function(data) {
+
+    var _mode = QRMode.MODE_ALPHA_NUM;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var s = _data;
+
+      var i = 0;
+
+      while (i + 1 < s.length) {
+        buffer.put(
+          getCode(s.charAt(i) ) * 45 +
+          getCode(s.charAt(i + 1) ), 11);
+        i += 2;
+      }
+
+      if (i < s.length) {
+        buffer.put(getCode(s.charAt(i) ), 6);
+      }
+    };
+
+    var getCode = function(c) {
+
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      } else if ('A' <= c && c <= 'Z') {
+        return c.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+      } else {
+        switch (c) {
+        case ' ' : return 36;
+        case '$' : return 37;
+        case '%' : return 38;
+        case '*' : return 39;
+        case '+' : return 40;
+        case '-' : return 41;
+        case '.' : return 42;
+        case '/' : return 43;
+        case ':' : return 44;
+        default :
+          throw 'illegal char :' + c;
+        }
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qr8BitByte
+  //---------------------------------------------------------------------
+
+  var qr8BitByte = function(data) {
+
+    var _mode = QRMode.MODE_8BIT_BYTE;
+    var _data = data;
+    var _bytes = qrcode.stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _bytes.length;
+    };
+
+    _this.write = function(buffer) {
+      for (var i = 0; i < _bytes.length; i += 1) {
+        buffer.put(_bytes[i], 8);
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrKanji
+  //---------------------------------------------------------------------
+
+  var qrKanji = function(data) {
+
+    var _mode = QRMode.MODE_KANJI;
+    var _data = data;
+
+    var stringToBytes = qrcode.stringToBytesFuncs['SJIS'];
+    if (!stringToBytes) {
+      throw 'sjis not supported.';
+    }
+    !function(c, code) {
+      // self test for sjis support.
+      var test = stringToBytes(c);
+      if (test.length != 2 || ( (test[0] << 8) | test[1]) != code) {
+        throw 'sjis not supported.';
+      }
+    }('\u53cb', 0x9746);
+
+    var _bytes = stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return ~~(_bytes.length / 2);
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _bytes;
+
+      var i = 0;
+
+      while (i + 1 < data.length) {
+
+        var c = ( (0xff & data[i]) << 8) | (0xff & data[i + 1]);
+
+        if (0x8140 <= c && c <= 0x9FFC) {
+          c -= 0x8140;
+        } else if (0xE040 <= c && c <= 0xEBBF) {
+          c -= 0xC140;
+        } else {
+          throw 'illegal char at ' + (i + 1) + '/' + c;
+        }
+
+        c = ( (c >>> 8) & 0xff) * 0xC0 + (c & 0xff);
+
+        buffer.put(c, 13);
+
+        i += 2;
+      }
+
+      if (i < data.length) {
+        throw 'illegal char at ' + (i + 1);
+      }
+    };
+
+    return _this;
+  };
+
+  //=====================================================================
+  // GIF Support etc.
+  //
+
+  //---------------------------------------------------------------------
+  // byteArrayOutputStream
+  //---------------------------------------------------------------------
+
+  var byteArrayOutputStream = function() {
+
+    var _bytes = [];
+
+    var _this = {};
+
+    _this.writeByte = function(b) {
+      _bytes.push(b & 0xff);
+    };
+
+    _this.writeShort = function(i) {
+      _this.writeByte(i);
+      _this.writeByte(i >>> 8);
+    };
+
+    _this.writeBytes = function(b, off, len) {
+      off = off || 0;
+      len = len || b.length;
+      for (var i = 0; i < len; i += 1) {
+        _this.writeByte(b[i + off]);
+      }
+    };
+
+    _this.writeString = function(s) {
+      for (var i = 0; i < s.length; i += 1) {
+        _this.writeByte(s.charCodeAt(i) );
+      }
+    };
+
+    _this.toByteArray = function() {
+      return _bytes;
+    };
+
+    _this.toString = function() {
+      var s = '';
+      s += '[';
+      for (var i = 0; i < _bytes.length; i += 1) {
+        if (i > 0) {
+          s += ',';
+        }
+        s += _bytes[i];
+      }
+      s += ']';
+      return s;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64EncodeOutputStream
+  //---------------------------------------------------------------------
+
+  var base64EncodeOutputStream = function() {
+
+    var _buffer = 0;
+    var _buflen = 0;
+    var _length = 0;
+    var _base64 = '';
+
+    var _this = {};
+
+    var writeEncoded = function(b) {
+      _base64 += String.fromCharCode(encode(b & 0x3f) );
+    };
+
+    var encode = function(n) {
+      if (n < 0) {
+        // error.
+      } else if (n < 26) {
+        return 0x41 + n;
+      } else if (n < 52) {
+        return 0x61 + (n - 26);
+      } else if (n < 62) {
+        return 0x30 + (n - 52);
+      } else if (n == 62) {
+        return 0x2b;
+      } else if (n == 63) {
+        return 0x2f;
+      }
+      throw 'n:' + n;
+    };
+
+    _this.writeByte = function(n) {
+
+      _buffer = (_buffer << 8) | (n & 0xff);
+      _buflen += 8;
+      _length += 1;
+
+      while (_buflen >= 6) {
+        writeEncoded(_buffer >>> (_buflen - 6) );
+        _buflen -= 6;
+      }
+    };
+
+    _this.flush = function() {
+
+      if (_buflen > 0) {
+        writeEncoded(_buffer << (6 - _buflen) );
+        _buffer = 0;
+        _buflen = 0;
+      }
+
+      if (_length % 3 != 0) {
+        // padding
+        var padlen = 3 - _length % 3;
+        for (var i = 0; i < padlen; i += 1) {
+          _base64 += '=';
+        }
+      }
+    };
+
+    _this.toString = function() {
+      return _base64;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64DecodeInputStream
+  //---------------------------------------------------------------------
+
+  var base64DecodeInputStream = function(str) {
+
+    var _str = str;
+    var _pos = 0;
+    var _buffer = 0;
+    var _buflen = 0;
+
+    var _this = {};
+
+    _this.read = function() {
+
+      while (_buflen < 8) {
+
+        if (_pos >= _str.length) {
+          if (_buflen == 0) {
+            return -1;
+          }
+          throw 'unexpected end of file./' + _buflen;
+        }
+
+        var c = _str.charAt(_pos);
+        _pos += 1;
+
+        if (c == '=') {
+          _buflen = 0;
+          return -1;
+        } else if (c.match(/^\s$/) ) {
+          // ignore if whitespace.
+          continue;
+        }
+
+        _buffer = (_buffer << 6) | decode(c.charCodeAt(0) );
+        _buflen += 6;
+      }
+
+      var n = (_buffer >>> (_buflen - 8) ) & 0xff;
+      _buflen -= 8;
+      return n;
+    };
+
+    var decode = function(c) {
+      if (0x41 <= c && c <= 0x5a) {
+        return c - 0x41;
+      } else if (0x61 <= c && c <= 0x7a) {
+        return c - 0x61 + 26;
+      } else if (0x30 <= c && c <= 0x39) {
+        return c - 0x30 + 52;
+      } else if (c == 0x2b) {
+        return 62;
+      } else if (c == 0x2f) {
+        return 63;
+      } else {
+        throw 'c:' + c;
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // gifImage (B/W)
+  //---------------------------------------------------------------------
+
+  var gifImage = function(width, height) {
+
+    var _width = width;
+    var _height = height;
+    var _data = new Array(width * height);
+
+    var _this = {};
+
+    _this.setPixel = function(x, y, pixel) {
+      _data[y * _width + x] = pixel;
+    };
+
+    _this.write = function(out) {
+
+      //---------------------------------
+      // GIF Signature
+
+      out.writeString('GIF87a');
+
+      //---------------------------------
+      // Screen Descriptor
+
+      out.writeShort(_width);
+      out.writeShort(_height);
+
+      out.writeByte(0x80); // 2bit
+      out.writeByte(0);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Global Color Map
+
+      // black
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+
+      // white
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+
+      //---------------------------------
+      // Image Descriptor
+
+      out.writeString(',');
+      out.writeShort(0);
+      out.writeShort(0);
+      out.writeShort(_width);
+      out.writeShort(_height);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Local Color Map
+
+      //---------------------------------
+      // Raster Data
+
+      var lzwMinCodeSize = 2;
+      var raster = getLZWRaster(lzwMinCodeSize);
+
+      out.writeByte(lzwMinCodeSize);
+
+      var offset = 0;
+
+      while (raster.length - offset > 255) {
+        out.writeByte(255);
+        out.writeBytes(raster, offset, 255);
+        offset += 255;
+      }
+
+      out.writeByte(raster.length - offset);
+      out.writeBytes(raster, offset, raster.length - offset);
+      out.writeByte(0x00);
+
+      //---------------------------------
+      // GIF Terminator
+      out.writeString(';');
+    };
+
+    var bitOutputStream = function(out) {
+
+      var _out = out;
+      var _bitLength = 0;
+      var _bitBuffer = 0;
+
+      var _this = {};
+
+      _this.write = function(data, length) {
+
+        if ( (data >>> length) != 0) {
+          throw 'length over';
+        }
+
+        while (_bitLength + length >= 8) {
+          _out.writeByte(0xff & ( (data << _bitLength) | _bitBuffer) );
+          length -= (8 - _bitLength);
+          data >>>= (8 - _bitLength);
+          _bitBuffer = 0;
+          _bitLength = 0;
+        }
+
+        _bitBuffer = (data << _bitLength) | _bitBuffer;
+        _bitLength = _bitLength + length;
+      };
+
+      _this.flush = function() {
+        if (_bitLength > 0) {
+          _out.writeByte(_bitBuffer);
+        }
+      };
+
+      return _this;
+    };
+
+    var getLZWRaster = function(lzwMinCodeSize) {
+
+      var clearCode = 1 << lzwMinCodeSize;
+      var endCode = (1 << lzwMinCodeSize) + 1;
+      var bitLength = lzwMinCodeSize + 1;
+
+      // Setup LZWTable
+      var table = lzwTable();
+
+      for (var i = 0; i < clearCode; i += 1) {
+        table.add(String.fromCharCode(i) );
+      }
+      table.add(String.fromCharCode(clearCode) );
+      table.add(String.fromCharCode(endCode) );
+
+      var byteOut = byteArrayOutputStream();
+      var bitOut = bitOutputStream(byteOut);
+
+      // clear code
+      bitOut.write(clearCode, bitLength);
+
+      var dataIndex = 0;
+
+      var s = String.fromCharCode(_data[dataIndex]);
+      dataIndex += 1;
+
+      while (dataIndex < _data.length) {
+
+        var c = String.fromCharCode(_data[dataIndex]);
+        dataIndex += 1;
+
+        if (table.contains(s + c) ) {
+
+          s = s + c;
+
+        } else {
+
+          bitOut.write(table.indexOf(s), bitLength);
+
+          if (table.size() < 0xfff) {
+
+            if (table.size() == (1 << bitLength) ) {
+              bitLength += 1;
+            }
+
+            table.add(s + c);
+          }
+
+          s = c;
+        }
+      }
+
+      bitOut.write(table.indexOf(s), bitLength);
+
+      // end code
+      bitOut.write(endCode, bitLength);
+
+      bitOut.flush();
+
+      return byteOut.toByteArray();
+    };
+
+    var lzwTable = function() {
+
+      var _map = {};
+      var _size = 0;
+
+      var _this = {};
+
+      _this.add = function(key) {
+        if (_this.contains(key) ) {
+          throw 'dup key:' + key;
+        }
+        _map[key] = _size;
+        _size += 1;
+      };
+
+      _this.size = function() {
+        return _size;
+      };
+
+      _this.indexOf = function(key) {
+        return _map[key];
+      };
+
+      _this.contains = function(key) {
+        return typeof _map[key] != 'undefined';
+      };
+
+      return _this;
+    };
+
+    return _this;
+  };
+
+  var createDataURL = function(width, height, getPixel) {
+    var gif = gifImage(width, height);
+    for (var y = 0; y < height; y += 1) {
+      for (var x = 0; x < width; x += 1) {
+        gif.setPixel(x, y, getPixel(x, y) );
+      }
+    }
+
+    var b = byteArrayOutputStream();
+    gif.write(b);
+
+    var base64 = base64EncodeOutputStream();
+    var bytes = b.toByteArray();
+    for (var i = 0; i < bytes.length; i += 1) {
+      base64.writeByte(bytes[i]);
+    }
+    base64.flush();
+
+    return 'data:image/gif;base64,' + base64;
+  };
+
+  //---------------------------------------------------------------------
+  // returns qrcode function.
+
+  return qrcode;
+}();
+
+// multibyte support
+!function() {
+
+  qrcode.stringToBytesFuncs['UTF-8'] = function(s) {
+    // http://stackoverflow.com/questions/18729405/how-to-convert-utf8-string-to-byte-array
+    function toUTF8Array(str) {
+      var utf8 = [];
+      for (var i=0; i < str.length; i++) {
+        var charcode = str.charCodeAt(i);
+        if (charcode < 0x80) utf8.push(charcode);
+        else if (charcode < 0x800) {
+          utf8.push(0xc0 | (charcode >> 6),
+              0x80 | (charcode & 0x3f));
+        }
+        else if (charcode < 0xd800 || charcode >= 0xe000) {
+          utf8.push(0xe0 | (charcode >> 12),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+        // surrogate pair
+        else {
+          i++;
+          // UTF-16 encodes 0x10000-0x10FFFF by
+          // subtracting 0x10000 and splitting the
+          // 20 bits of 0x0-0xFFFFF into two halves
+          charcode = 0x10000 + (((charcode & 0x3ff)<<10)
+            | (str.charCodeAt(i) & 0x3ff));
+          utf8.push(0xf0 | (charcode >>18),
+              0x80 | ((charcode>>12) & 0x3f),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+      }
+      return utf8;
+    }
+    return toUTF8Array(s);
+  };
+
+}();
+
+(function (factory) {
+  if (typeof define === 'function' && define.amd) {
+      define([], factory);
+  } else if (typeof exports === 'object') {
+      module.exports = factory();
+  }
+}(function () {
+    return qrcode;
+}));
+
+
+</script>
+<script>
+(function () {
+  var KEY = 'banGoFuda_memo_v1', PRE_KEY = 'banGoFuda_memo_prefix', MAX = 9999, KEEP = 400;
+  var OLD_KEY = 'banGoFuda_state_v1';  // 状態メモ前の番号札モード。初回だけ番号の続きを引き継ぐ（消さずに残す）
+
+  // ラミネート表（表）
+  var MODELS = ['ZN6','ZC6','KY51','GGH20','BRM','YA9','L33','KB1','KB2','NB8C','CZ4A','GDA',
+                'DC5','NA8C','VCH10','SH9','CL1','ACR30','ZRE152','YAM','BMM','CM2','CKV36','CP3'];
+  var WH = ['ア','イ','ウ','エ','オ','カ','キ','ク','ケ','コ','サ','シ','ス',
+            'セ','ソ','タ','チ','ツ','テ','ト','ナ','ニ','ヌ','ネ','ノ'];
+  var SIZES = ['60(B)','80(C)','100(D)','120(E)','140(F)','160(G)','180(H)','200(I)','220(J)',
+               '240(K)','260(L)','チャーター260〜300','チャーター300〜340'];
+  // ラミネート表（裏）。列ごとにまとめ、重複（カプラー・戻り悪い・ひび割れ）は1つに
+  var GROUPS = [
+    { name: '位置', words: ['右','左','前','後','左右','上側','下側','右側','左側','裏側','前期','後期'] },
+    { name: '部位', words: ['ステー','クリップ','カプラー','ネジ','ピン','シャフト','ブーツ','レザー','バルブ','フチ','ハンガー','ガスケット','シート'] },
+    { name: '傷み', words: ['サビ','劣化','塗装','断線','メッキ','擦れ','はがれ','色落ち','凹み','破れ','ひび割れ','切れ','折れ','へたり','なめ','ほつれ','歪み','テープ痕','曲がり','補修痕','日焼け','ガリ傷','えぐれ','つぶれ','漏れ','角減り'] },
+    { name: '動き・中身', words: ['中からサラサラ','中から水の音','金属音','抜け','戻り悪い','ゆっくり戻る','欠品','フィルム','映り悪い','カラーNo','別色付き','溶接痕','ステッカー'] },
+    { name: 'その他', words: ['丸めて保管','カメラの状態','ゴムの状態','付属品は写真で全て','オイル','内部','水分','動作確認','社外','加工','穴','ジャンク','付属'] },
+    { name: '判定', words: ['OK','×','？','不明','全て','おまけ','サイズ違い','深リム'] }
+  ];
+  var SEP = '／';
+  var SEP_A = 'YUUKIAN_SEP_A';  // 出品ツール（exe）の区切りQR。商品写真と状態写真の間に撮る
+  // 倉庫配置図エディターの地図（build.py が warehouse_layout.json から埋め込む）
+  var MAP = [{"t":"room","lbl":"カ","x":227,"y":64,"w":40,"h":110,"bg":"#ffffff"},{"t":"room","lbl":"キ","x":500,"y":110,"w":30,"h":50,"bg":"#ffffff"},{"t":"room","lbl":"ク","x":537,"y":109,"w":30,"h":50,"bg":"#ffffff"},{"t":"room","lbl":"ケ","x":572,"y":109,"w":30,"h":50,"bg":"#ffffff"},{"t":"room","lbl":"ス","x":707,"y":147,"w":50,"h":30,"bg":"#aed5bb"},{"t":"stairs","lbl":"","x":765,"y":127,"w":20,"h":52,"bg":"#333333"},{"t":"room","lbl":"コ","x":643,"y":188,"w":115,"h":49,"bg":"#ffffff"},{"t":"small","lbl":"洗い場","x":785,"y":199,"w":56,"h":38,"bg":"#ffffff"},{"t":"room","lbl":"ア","x":755,"y":396,"w":65,"h":45,"bg":"#ffffff"},{"t":"room","lbl":"シ","x":673,"y":449,"w":65,"h":45,"bg":"#aed5bb"},{"t":"stairs","lbl":"","x":745,"y":74,"w":20,"h":52,"bg":"#333333"},{"t":"room","lbl":"サ","x":649,"y":91,"w":50,"h":30,"bg":"#aed5bb"},{"t":"room","lbl":"","x":496,"y":164,"w":120,"h":15,"bg":"#000000"},{"t":"stairs","lbl":"","x":596,"y":181,"w":20,"h":52,"bg":"#333333"},{"t":"room","lbl":"ト","x":329,"y":104,"w":50,"h":30,"bg":"#ffffff"},{"t":"room","lbl":"チ","x":275,"y":104,"w":50,"h":30,"bg":"#aed5bb"},{"t":"room","lbl":"タイヤ2","x":5,"y":206,"w":110,"h":40,"bg":"#ffffff"},{"t":"room","lbl":"イ","x":673,"y":395,"w":65,"h":45,"bg":"#ffffff"},{"t":"stairs","lbl":"","x":632,"y":380,"w":20,"h":80,"bg":"#333333"},{"t":"room","lbl":"","x":632,"y":457,"w":20,"h":34,"bg":"#000000"},{"t":"room","lbl":"ウ","x":435,"y":392,"w":180,"h":48,"bg":"#ffffff"},{"t":"room","lbl":"テ","x":328,"y":64,"w":50,"h":30,"bg":"#ffffff"},{"t":"room","lbl":"タ","x":274,"y":64,"w":50,"h":30,"bg":"#aed5bb"},{"t":"room","lbl":"","x":408,"y":80,"w":40,"h":80,"bg":"#ffffff"},{"t":"room","lbl":"タイヤ１","x":5,"y":165,"w":110,"h":40,"bg":"#ffffff"},{"t":"room","lbl":"ナ","x":329,"y":144,"w":50,"h":30,"bg":"#ffffff"},{"t":"room","lbl":"ツ","x":275,"y":144,"w":50,"h":30,"bg":"#aed5bb"},{"t":"room","lbl":"ハウス","x":113,"y":65,"w":94,"h":70,"bg":"#ffffff"},{"t":"small","lbl":"出品室","x":417,"y":340,"w":100,"h":45,"bg":"#ffffff"},{"t":"room","lbl":"セ","x":526,"y":446,"w":90,"h":45,"bg":"#aed5bb"},{"t":"small","lbl":"出品室","x":521,"y":340,"w":100,"h":45,"bg":"#ffffff"},{"t":"room","lbl":"ソ","x":431,"y":446,"w":90,"h":45,"bg":"#aed5bb"},{"t":"room","lbl":"エ","x":359,"y":393,"w":70,"h":45,"bg":"#ffffff"},{"t":"room","lbl":"オ","x":286,"y":393,"w":70,"h":45,"bg":"#ffffff"},{"t":"label","lbl":"2階","x":688,"y":40,"w":50,"h":22,"bg":"#aed5bb"},{"t":"room","lbl":"","x":765,"y":74,"w":20,"h":52,"bg":"#000000"},{"t":"room","lbl":"","x":648,"y":129,"w":110,"h":15,"bg":"#000000"},{"t":"room","lbl":"","x":649,"y":147,"w":50,"h":30,"bg":"#aed5bb"},{"t":"room","lbl":"（仮）資材置き","x":265,"y":284,"w":128,"h":48,"bg":"#ffffff"},{"t":"label","lbl":"2階","x":276,"y":25,"w":48,"h":24,"bg":"#aed5bb"}];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var S = null;
+
+  // 言葉と型式の一覧は設定画面で変えられる。番号の控えとは別に保存（控えを消しても残る）
+  var WORDS_KEY = 'banGoFuda_memo_words';
+  function defaultGroups() { return GROUPS.map(function (g) { return { name: g.name, words: g.words.slice() }; }); }
+  function loadWords() {
+    try {
+      var w = JSON.parse(localStorage.getItem(WORDS_KEY) || 'null');
+      if (w && w.groups && w.models) return w;
+    } catch (e) {}
+    return { groups: defaultGroups(), models: MODELS.slice() };
+  }
+  function saveWords() { try { localStorage.setItem(WORDS_KEY, JSON.stringify(W)); } catch (e) {} }
+  function sortedModels() { return W.models.slice().sort(function (a, b) { return a.localeCompare(b, 'en', { numeric: true }); }); }
+  var W = loadWords();
+
+  function load() {
+    try {
+      var r = localStorage.getItem(KEY);
+      if (r) return JSON.parse(r);
+      var o = localStorage.getItem(OLD_KEY);
+      if (o) {
+        o = JSON.parse(o);
+        if (o && o.generated && o.generated.length) {
+          return { prefix: o.prefix, nextNum: o.nextNum, generated: o.generated, idx: o.idx, memos: {}, custom: [] };
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function buzz() { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} }
+
+  function incrementId(prefix, num) {
+    num += 1;
+    if (num > MAX) {
+      num = 1;
+      if (!prefix) prefix = 'B';
+      else if (prefix.slice(-1) === 'Z') prefix = prefix + 'A';
+      else prefix = prefix.slice(0, -1) + String.fromCharCode(prefix.charCodeAt(prefix.length - 1) + 1);
+    }
+    return [prefix, num];
+  }
+
+  function cur() { return S.generated[S.idx]; }
+  function memo(id) {
+    if (!S.memos[id]) S.memos[id] = { model: '', wh: '', size: '', tokens: [], note: '' };
+    return S.memos[id];
+  }
+  // 区切りAをはさむのは選んだ人だけ（ほかの作業者が混乱しないよう、はじめは「いつもの」）
+  function sepOn() { return W.sepA === true; }
+
+  // 新しい番号を足す。型式だけ直前の番号から引き継ぐ（倉庫・サイズ・状態は空から）
+  function pushId(p, n) {
+    var id = p + n;
+    var prev = S.generated.length ? memo(cur()) : null;
+    var isNew = !S.memos[id];
+    S.generated.push(id);
+    S.idx = S.generated.length - 1;
+    var m = memo(id);
+    if (isNew && prev && W.carry !== false) m.model = prev.model;
+    var r = incrementId(p, n);
+    S.prefix = r[0]; S.nextNum = r[1];
+    trim();
+  }
+  function trim() {
+    if (S.generated.length <= KEEP) return;
+    var cut = S.generated.length - KEEP;
+    S.generated = S.generated.slice(cut);
+    S.idx = Math.max(0, S.idx - cut);
+    var live = {};
+    S.generated.forEach(function (id) { live[id] = 1; });
+    Object.keys(S.memos).forEach(function (id) { if (!live[id]) delete S.memos[id]; });
+  }
+
+  // ---- 描画 ----
+  function renderQR(text) {
+    var qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    $('qrcode').innerHTML = qr.createImgTag(6, 8);
+  }
+
+  // ---- 出品サポート：データQR ----
+  // 管理番号QRは今のまま（読み取りツール exe は、管理番号の形のQRだけを区切りに使う）。
+  // データQRは「YKS1|管理番号|型式|倉庫|サイズ|状態の行／状態の行…」。「YKS1|」で始まり管理番号の形ではないので、exe は無視する。
+  // 出品アシスタントが、番号札の写真からこのQRを読んで、型式・倉庫・サイズ・状態メモを下書きに入れる
+  function supportOn() { return W.support === true; }
+  function dataText(id, m) {
+    var cl = function (s) { return String(s).replace(/\|/g, '｜').replace(/\s+/g, ' ').trim(); };
+    var memoLines = lines(m.tokens).concat(String(m.note || '').split(String.fromCharCode(10))).map(cl).filter(Boolean).join(SEP);
+    return ['YKS1', id, cl(m.model || ''), cl(m.wh || ''), cl(m.size || ''), memoLines].join('|');
+  }
+  function utf8Bytes(str) {      // QRライブラリの標準は1文字1バイトで、日本語が壊れるため、UTF-8にする
+    var out = [], b;
+    try { b = unescape(encodeURIComponent(str)); } catch (e) { b = str.replace(/[^\x20-\x7e]/g, '?'); }
+    for (var i = 0; i < b.length; i++) out.push(b.charCodeAt(i) & 0xff);
+    return out;
+  }
+  function renderQR2(text) {
+    var prev = qrcode.stringToBytes;
+    try {
+      qrcode.stringToBytes = utf8Bytes;
+      var qr = qrcode(0, 'L');      // 誤り訂正は低め＝同じ大きさでも1マスが大きくなり、写真で読みやすい
+      qr.addData(text); qr.make();
+      var n = qr.getModuleCount(), px = Math.max(96, Math.min((n + 8) * 4, 176));
+      $('qrcode2').innerHTML = qr.createImgTag(4, 16);      // まわりの白い余白は4マスぶん
+      var im = $('qrcode2').firstChild; if (im) { im.style.width = px + 'px'; im.style.height = px + 'px'; }
+    } catch (e) { $('qrcode2').innerHTML = ''; }
+    finally { qrcode.stringToBytes = prev; }
+  }
+
+  function lines(tokens) {
+    var out = [[]];
+    tokens.forEach(function (t) { if (t === SEP) out.push([]); else out[out.length - 1].push(t); });
+    return out.filter(function (l) { return l.length; }).map(function (l) { return l.join(' '); });
+  }
+  function fillLines(el, ls) {
+    el.innerHTML = '';
+    ls.forEach(function (t) { var d = document.createElement('div'); d.textContent = t; el.appendChild(d); });
+  }
+
+  function render() {
+    var id = cur(), m = memo(id);
+    var onSep = !!S.onSep && sepOn();
+    document.body.classList.toggle('sep', onSep);
+    if (onSep) {
+      // 区切りQRの画面。状態の入力は、このあとの番号に入る
+      $('mode-label').textContent = '区切りQR（商品写真 → これ → 状態・番号）';
+      $('number').textContent = '区切り A';
+      $('progress').textContent = 'このあと ' + id;
+      renderQR(SEP_A);
+    } else {
+      $('mode-label').textContent = sepOn() ? '番号札モード（区切りAをはさむ撮り方）' : '番号札モード（スマホ単独）';
+      $('number').textContent = id;
+      $('progress').textContent = (S.idx + 1) + ' / ' + S.generated.length + (S.idx === S.generated.length - 1 ? '（最新）' : '');
+      renderQR(id);
+    }
+    document.body.classList.toggle('support', supportOn() && !onSep);
+    if (supportOn() && !onSep) renderQR2(dataText(id, m)); else $('qrcode2').innerHTML = '';
+
+    // いつもの画面の型式・倉庫・サイズは押すと、その選ぶところが開く
+    var meta = $('meta');
+    meta.innerHTML = '';
+    [['model', m.model], ['wh', m.wh ? '倉庫' + m.wh : ''], ['size', m.size]].forEach(function (k) {
+      if (!k[1]) return;
+      var b = document.createElement('button'); b.textContent = k[1]; b.setAttribute('aria-label', k[1] + 'を変える');
+      b.addEventListener('click', function () { openSheet(true, k[0]); });
+      meta.appendChild(b);
+    });
+
+    var ls = lines(m.tokens);
+    var free = String(m.note || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    var total = ls.length + free.length;
+    document.body.classList.toggle('has-memo', total > 0);
+    fillLines($('memo'), ls);
+    free.forEach(function (t) { var d = document.createElement('div'); d.className = 'free'; d.textContent = t; $('memo').appendChild(d); });
+    fit();
+    $('stateBtn').textContent = total ? '状態を直す（' + total + '行）' : '状態を入れる';
+    if (document.activeElement !== $('note')) $('note').value = m.note || '';
+
+    // シートの上に、選んでいる型式・倉庫・サイズを出す。押すとそれだけ消える
+    var sm = $('sheetMeta');
+    sm.innerHTML = '';
+    [['model', m.model], ['wh', m.wh ? '倉庫' + m.wh : ''], ['size', m.size]].forEach(function (k) {
+      if (!k[1]) return;
+      var b = document.createElement('button'); b.textContent = k[1] + ' ×'; b.setAttribute('aria-label', k[1] + 'を外す');
+      b.addEventListener('click', function () { buzz(); keepForUndo(k[1] + ' を外しました'); memo(cur())[k[0]] = ''; render(); });
+      sm.appendChild(b);
+    });
+    sm.hidden = !sm.children.length;
+
+    // 上の表示。行を押すと「この行に足す／この行を消す」が出る
+    var pv = $('preview');
+    if (editLine !== null && editLine >= ls.length) editLine = null;
+    if (selLine !== null && selLine >= ls.length) selLine = null;
+    pv.innerHTML = '';
+    if (ls.length) {
+      ls.forEach(function (t, i) {
+        var d = document.createElement('div');
+        d.className = 'ln' + (i === editLine ? ' editing' : '') + (i === selLine ? ' sel' : '');
+        d.textContent = t;
+        d.addEventListener('click', function () { selLine = (selLine === i) ? null : i; render(); });
+        pv.appendChild(d);
+        if (i === selLine) pv.appendChild(lineActions(i));
+      });
+      if (editLine !== null) {
+        var ed = document.createElement('div'); ed.className = 'nextln';
+        ed.textContent = '▸ ' + (editLine + 1) + '行目に足しています（「改行」で終わり）';
+        pv.appendChild(ed);
+      } else if (m.tokens[m.tokens.length - 1] === SEP) {
+        // 「改行」を押した直後は、改行されたことが分かるように空の次の行を見せる（撮影画面には出さない）
+        var nx = document.createElement('div'); nx.className = 'nextln';
+        nx.textContent = '▸ ' + (ls.length + 1) + '行目（ここから次の項目）';
+        pv.appendChild(nx);
+      }
+    } else pv.innerHTML = '<div class="empty">押した順に並びます。「改行」で次の行へ。行を押すと消したり足したりできます。</div>';
+    if (selLine === null) pv.scrollTop = pv.scrollHeight;
+
+    var prev = S.idx > 0 ? S.memos[S.generated[S.idx - 1]] : null;
+    $('copyPrevBtn').disabled = !(prev && (prev.tokens.length || prev.note));
+
+    document.querySelectorAll('[data-kind]').forEach(function (b) {
+      b.classList.toggle('on', m[b.dataset.kind] === b.dataset.val);
+    });
+    save();
+  }
+
+  // 書いた量が多いときは、画面からはみ出さないよう文字を小さくする
+  function fit() {
+    var el = $('memo'), fs = 30;
+    el.style.fontSize = fs + 'px';
+    while (el.scrollHeight > el.clientHeight + 1 && fs > 12) { fs -= 1; el.style.fontSize = fs + 'px'; }
+  }
+
+  // ---- 状態を入れるシート ----
+  function makeGrid(words, cls, onTap, kind) {
+    var g = document.createElement('div');
+    g.className = 'grid' + (cls ? ' ' + cls : '');
+    words.forEach(function (w) {
+      var b = document.createElement('button');
+      b.textContent = w;
+      if (kind) { b.dataset.kind = kind; b.dataset.val = w; }
+      b.addEventListener('click', function () { buzz(); onTap(w, b); });
+      g.appendChild(b);
+    });
+    return g;
+  }
+  function section(title, grid) {
+    var s = document.createElement('div'); s.className = 'sec';
+    var h = document.createElement('h2'); h.textContent = title;
+    s.appendChild(h); s.appendChild(grid);
+    return s;
+  }
+  // 行ごとの範囲（tokens の何番目から何番目まで）。lines() と同じ数え方
+  function lineRanges(tokens) {
+    var out = [], s = 0;
+    for (var i = 0; i <= tokens.length; i++) {
+      if (i === tokens.length || tokens[i] === SEP) { if (i > s) out.push([s, i]); s = i + 1; }
+    }
+    return out;
+  }
+  var editLine = null;  // 「この行に足す」にした行。null なら最後に足す
+  var selLine = null;   // 押して操作ボタンを出している行
+  function insertTokens(ws) {
+    var t = memo(cur()).tokens;
+    if (editLine !== null) {
+      var r = lineRanges(t)[editLine];
+      if (r) { Array.prototype.splice.apply(t, [r[1], 0].concat(ws)); return; }
+      editLine = null;
+    }
+    Array.prototype.push.apply(t, ws);
+  }
+  function lineActions(i) {
+    var box = document.createElement('div'); box.className = 'lineAct';
+    [['この行に足す', '', function () { editLine = i; selLine = null; }],
+     ['この行を消す', 'del', function () { keepForUndo((i + 1) + '行目を消しました'); deleteLine(i); selLine = null; }],
+     ['やめる', '', function () { selLine = null; }]].forEach(function (a) {
+      var b = document.createElement('button'); b.textContent = a[0]; if (a[1]) b.className = a[1];
+      b.addEventListener('click', function (e) { e.stopPropagation(); buzz(); a[2](); render(); });
+      box.appendChild(b);
+    });
+    return box;
+  }
+  // ---- 元に戻す：消す・写すなどの直後5秒だけ出す ----
+  var undoSnap = null, undoTimer = null;
+  function keepForUndo(label) {
+    var id = cur();
+    undoSnap = { id: id, memo: JSON.parse(JSON.stringify(memo(id))) };
+    $('toastMsg').textContent = label;
+    $('toast').hidden = false;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(function () { $('toast').hidden = true; undoSnap = null; }, 5000);
+  }
+  $('toastUndo').addEventListener('click', function () {
+    if (!undoSnap) return;
+    buzz();
+    S.memos[undoSnap.id] = undoSnap.memo;
+    undoSnap = null; clearTimeout(undoTimer); $('toast').hidden = true;
+    editLine = null; selLine = null;
+    $('note').value = memo(cur()).note || '';
+    render();
+  });
+
+  function deleteLine(i) {
+    var t = memo(cur()).tokens, r = lineRanges(t)[i];
+    if (!r) return;
+    if (t[r[1]] === SEP) t.splice(r[0], r[1] - r[0] + 1);
+    else if (r[0] > 0 && t[r[0] - 1] === SEP) t.splice(r[0] - 1, r[1] - r[0] + 1);
+    else t.splice(r[0], r[1] - r[0]);
+    if (editLine === i) editLine = null; else if (editLine !== null && editLine > i) editLine -= 1;
+  }
+
+  function addToken(w, b) {
+    insertTokens([w]);
+    W.use = W.use || {};
+    W.use[w] = (W.use[w] || 0) + 1;
+    saveWords();
+    if (b) { b.classList.add('flash'); setTimeout(function () { b.classList.remove('flash'); }, 140); }
+    render();
+  }
+  function pick(kind) {
+    return function (w) {
+      var m = memo(cur());
+      m[kind] = (m[kind] === w) ? '' : w;
+      remember(kind, m[kind]);
+      render();
+    };
+  }
+
+  // ボタンの並びの最後に「＋追加」。押すとその場に入力欄が出る（設定画面に行かなくても足せる）
+  function withAdd(sec, grid, inputId, placeholder, onAdd) {
+    var plus = document.createElement('button'); plus.className = 'add'; plus.textContent = '＋追加';
+    grid.appendChild(plus);
+    var row = document.createElement('div'); row.className = 'row'; row.hidden = true;
+    var inp = document.createElement('input'); inp.id = inputId; inp.type = 'text'; inp.placeholder = placeholder; inp.enterKeyHint = 'done';
+    var ok = document.createElement('button'); ok.textContent = '追加';
+    function go() {
+      var v = inp.value.trim();
+      if (!v) { row.hidden = true; return; }
+      onAdd(v); saveWords(); rebuild();
+    }
+    plus.addEventListener('click', function () { row.hidden = !row.hidden; if (!row.hidden) inp.focus(); });
+    ok.addEventListener('click', go);
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    row.appendChild(inp); row.appendChild(ok);
+    sec.appendChild(row);
+    return sec;
+  }
+
+  function jumpTo(el) { $('words').scrollTop = el.offsetTop - $('jump').offsetHeight - 2; }
+
+  function buildPanels() {
+    var back = $('paneBack');
+    // 一覧の上に固定する「グループへ飛ぶ」ボタンと、よく使う段（中身は開くたびに作る）
+    var jump = document.createElement('div'); jump.id = 'jump';
+    var quick = document.createElement('div'); quick.id = 'quick';
+    var hot = document.createElement('button'); hot.id = 'jumpHot'; hot.className = 'hot'; hot.textContent = 'よく使う';
+    hot.addEventListener('click', function () { $('words').scrollTop = 0; });
+    jump.appendChild(hot);
+    back.appendChild(jump); back.appendChild(quick);
+    W.groups.forEach(function (g, gi) {
+      var grid = makeGrid(g.words, '', addToken);
+      // 足した言葉は、そのまま今の状態にも入れる
+      var sec = withAdd(section(g.name, grid), grid, 'quickWord' + gi, '「' + g.name + '」に言葉を追加',
+        function (v) { if (g.words.indexOf(v) < 0) g.words.push(v); insertTokens([v]); });
+      back.appendChild(sec);
+      var jb = document.createElement('button'); jb.textContent = g.name;
+      jb.addEventListener('click', function () { jumpTo(sec); });
+      jump.appendChild(jb);
+    });
+
+    var front = $('paneFront');
+    var mg = makeGrid(sortedModels(), '', pick('model'), 'model');
+    var mSec = withAdd(section('型式' + (W.carry !== false ? '（次の番号へ引き継ぎ）' : ''), mg), mg, 'quickModel', '型式を追加（例 ZD8）',
+      function (v) { v = v.toUpperCase(); if (W.models.indexOf(v) < 0) W.models.push(v); memo(cur()).model = v; remember('model', v); });
+    var whSec = section('倉庫', makeGrid(WH, 'c5', pick('wh'), 'wh'));
+    if (MAP.length) {
+      var mb = document.createElement('button'); mb.className = 'mapBtn'; mb.textContent = '地図から倉庫を選ぶ';
+      mb.addEventListener('click', openMap);
+      whSec.appendChild(mb);
+    }
+    var sSec = section('サイズ', makeGrid(SIZES, 'c3', pick('size'), 'size'));
+    mSec.dataset.key = 'model'; whSec.dataset.key = 'wh'; sSec.dataset.key = 'size';
+    [[mSec, 'recentModel'], [whSec, 'recentWh']].forEach(function (k) {
+      var box = document.createElement('div'); box.className = 'recent'; box.id = k[1]; box.hidden = true;
+      k[0].insertBefore(box, k[0].querySelector('.grid'));
+    });
+    front.appendChild(mSec); front.appendChild(whSec); front.appendChild(sSec);
+    if (S) buildQuick();
+  }
+
+  // よく使う段：これまでの番号に入れた行（2語以上）と、押した回数の多い言葉。
+  // 押している最中に並びが動くと押し間違えるので、シートを開いたときだけ作り直す
+  function buildQuick() {
+    var q = $('quick');
+    if (!q) return;
+    q.innerHTML = '';
+    var cnt = {}, last = {};
+    S.generated.forEach(function (id, k) {
+      var mm = S.memos[id];
+      if (k === S.idx || !mm) return;
+      lines(mm.tokens).forEach(function (l) {
+        if (l.indexOf(' ') < 0) return;
+        cnt[l] = (cnt[l] || 0) + 1; last[l] = k;
+      });
+    });
+    var ls = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a] || last[b] - last[a]; }).slice(0, 4);
+    var all = {};
+    W.groups.forEach(function (g) { g.words.forEach(function (w) { all[w] = 1; }); });
+    var use = W.use || {};
+    var ws = Object.keys(use).filter(function (w) { return all[w] && use[w] >= 2; })
+      .sort(function (a, b) { return use[b] - use[a]; }).slice(0, 8);
+    if (ls.length) {
+      q.appendChild(section('よく使う行（押すと1行まるごと入ります）', makeGrid(ls, 'c2', function (l) {
+        keepForUndo('「' + l + '」を入れました');
+        var t = memo(cur()).tokens;
+        if (editLine === null && t.length && t[t.length - 1] !== SEP) t.push(SEP);
+        insertTokens(l.split(' '));
+        render();
+      })));
+    }
+    if (ws.length) q.appendChild(section('よく使う言葉', makeGrid(ws, '', addToken)));
+    $('jumpHot').hidden = !(ls.length || ws.length);
+    buildRecent();
+  }
+
+  // 型式・倉庫の「最近使った」4つ。これもシートを開いたときだけ並べ直す
+  function remember(kind, v) {
+    if (!v || (kind !== 'model' && kind !== 'wh')) return;
+    var k = kind === 'model' ? 'recentModels' : 'recentWh';
+    var a = (W[k] || []).filter(function (x) { return x !== v; });
+    a.unshift(v);
+    W[k] = a.slice(0, 4);
+    saveWords();
+  }
+  function buildRecent() {
+    [['model', 'recentModel', (W.recentModels || []).filter(function (v) { return W.models.indexOf(v) >= 0; })],
+     ['wh', 'recentWh', W.recentWh || []]].forEach(function (k) {
+      var box = $(k[1]);
+      if (!box) return;
+      box.innerHTML = '';
+      box.hidden = !k[2].length;
+      if (!k[2].length) return;
+      var lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = '最近使った';
+      box.appendChild(lbl);
+      box.appendChild(makeGrid(k[2], '', pick(k[0]), k[0]));
+    });
+  }
+
+  function openSheet(front, key) {
+    selLine = null; editLine = null;
+    buildQuick();
+    $('stateSheet').hidden = false;
+    showTab(!!front);
+    if (key) {
+      var el = document.querySelector('#paneFront [data-key="' + key + '"]');
+      if (el) $('words').scrollTop = el.offsetTop - 4;
+    }
+    render();
+  }
+
+  // ---- 倉庫の地図（在庫ロケーションの「地図から倉庫を選ぶ」と同じ描き方） ----
+  var mapZoom = (window.innerWidth < 700) ? 2.5 : 1;
+  function mapName(s) { return String(s || '').replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/\s+/g, ''); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function drawMap() {
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    MAP.forEach(function (r) { x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y); x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h); });
+    var pad = 8, now = S ? memo(cur()).wh : '';
+    var s = '<svg viewBox="' + (x0 - pad) + ' ' + (y0 - pad) + ' ' + (x1 - x0 + pad * 2) + ' ' + (y1 - y0 + pad * 2) + '" style="width:' + (mapZoom * 100) + '%" role="img" aria-label="倉庫の地図">';
+    var top = '';
+    MAP.forEach(function (r) {
+      var name = mapName(r.lbl), dark = /^#(000|000000|333|333333)$/i.test(r.bg);
+      var cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+      if (r.t === 'room' && name) {
+        var on = (name === now);
+        top += '<g class="room" data-w="' + esc(name) + '">' +
+          '<rect x="' + r.x + '" y="' + r.y + '" width="' + r.w + '" height="' + r.h + '" rx="3" fill="' + (on ? '#111111' : esc(r.bg)) + '" stroke="' + (on ? '#111111' : '#f43f5e') + '" stroke-width="' + (on ? 2 : 1.4) + '"/>' +
+          '<text x="' + cx + '" y="' + (cy + 4) + '" text-anchor="middle" font-size="' + Math.min(13, Math.max(8, Math.min(r.w, r.h) * 0.42)) + '" font-weight="800" fill="' + (on ? '#ffffff' : '#111111') + '">' + esc(name) + '</text></g>';
+      } else {
+        s += '<rect x="' + r.x + '" y="' + r.y + '" width="' + r.w + '" height="' + r.h + '" fill="' + (dark ? '#9aa0ad' : esc(r.bg)) + '" stroke="#c9ccd6" stroke-width="0.8" opacity="' + (dark ? '.6' : '.8') + '"/>' +
+          (r.lbl ? '<text x="' + cx + '" y="' + (cy + 3) + '" text-anchor="middle" font-size="8" fill="#8d94a3">' + esc(r.lbl) + '</text>' : '');
+      }
+    });
+    $('mapBox').innerHTML = s + top + '</svg>';
+    Array.prototype.forEach.call($('mapBox').querySelectorAll('[data-w]'), function (g) {
+      g.addEventListener('click', function () {
+        buzz();
+        memo(cur()).wh = g.getAttribute('data-w');
+        remember('wh', memo(cur()).wh);
+        $('mapSheet').hidden = true;
+        render();
+      });
+    });
+  }
+  function openMap() { $('mapSheet').hidden = false; drawMap(); }
+  $('mapIn').addEventListener('click', function () { mapZoom = Math.min(4, mapZoom + 0.5); drawMap(); });
+  $('mapOut').addEventListener('click', function () { mapZoom = Math.max(1, mapZoom - 0.5); drawMap(); });
+  $('mapClose').addEventListener('click', function () { $('mapSheet').hidden = true; });
+  $('mapSheet').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  function rebuild() {
+    $('paneBack').innerHTML = ''; $('paneFront').innerHTML = '';
+    buildPanels();
+    if (S) render();
+  }
+
+  // ---- 設定画面 ----
+  var setTab = 'words';
+  function armOnce(btn, armText, onSecond) {
+    if (btn.classList.contains('arm')) { onSecond(); return; }
+    var orig = btn.textContent;
+    btn.classList.add('arm'); btn.textContent = armText;
+    setTimeout(function () { if (btn.isConnected) { btn.classList.remove('arm'); btn.textContent = orig; } }, 2500);
+  }
+  function wordRow(text, onUp, onDown, onDel) {
+    var r = document.createElement('div'); r.className = 'wrow';
+    var s = document.createElement('span'); s.textContent = text; r.appendChild(s);
+    if (onUp !== undefined) {
+      [['↑', onUp, '上へ'], ['↓', onDown, '下へ']].forEach(function (d) {
+        var b = document.createElement('button'); b.textContent = d[0]; b.setAttribute('aria-label', text + 'を' + d[2]);
+        if (!d[1]) b.disabled = true; else b.addEventListener('click', function () { d[1](); changed(); });
+        r.appendChild(b);
+      });
+    }
+    var x = document.createElement('button'); x.className = 'del'; x.textContent = '×'; x.setAttribute('aria-label', text + 'を消す');
+    x.addEventListener('click', function () { armOnce(x, '消す', function () { onDel(); changed(); }); });
+    r.appendChild(x);
+    return r;
+  }
+  function addRow(id, placeholder, onAdd) {
+    var row = document.createElement('div'); row.className = 'row';
+    var inp = document.createElement('input'); inp.id = id; inp.type = 'text'; inp.placeholder = placeholder; inp.enterKeyHint = 'done';
+    var b = document.createElement('button'); b.textContent = '追加';
+    function go() {
+      var v = inp.value.trim();
+      if (!v) return;
+      onAdd(v); changed();
+      var again = $(id); if (again) again.focus();
+    }
+    b.addEventListener('click', go);
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    row.appendChild(inp); row.appendChild(b);
+    return row;
+  }
+  function move(arr, i, d) { var t = arr[i]; arr[i] = arr[i + d]; arr[i + d] = t; }
+  function note(text) { var p = document.createElement('p'); p.className = 'setnote'; p.textContent = text; return p; }
+
+  function renderSettings() {
+    var body = $('setBody'), keep = body.scrollTop;
+    body.innerHTML = '';
+    $('setTabWords').setAttribute('aria-selected', setTab === 'words');
+    $('setTabModels').setAttribute('aria-selected', setTab === 'models');
+    if (setTab === 'words') {
+      body.appendChild(note('↑↓で並べ替え、×を2回押すと消えます。入力済みのメモはそのまま残ります。'));
+      W.groups.forEach(function (g, gi) {
+        var list = document.createElement('div'); list.className = 'wl';
+        g.words.forEach(function (w, i) {
+          list.appendChild(wordRow(w,
+            i > 0 ? function () { move(g.words, i, -1); } : null,
+            i < g.words.length - 1 ? function () { move(g.words, i, 1); } : null,
+            function () { g.words.splice(i, 1); }));
+        });
+        var sec = section(g.name + '（' + g.words.length + '）', list);
+        sec.appendChild(addRow('addWord' + gi, '「' + g.name + '」に言葉を追加', function (v) {
+          if (g.words.indexOf(v) < 0) g.words.push(v);
+        }));
+        body.appendChild(sec);
+      });
+      var rs = document.createElement('button'); rs.id = 'resetWords'; rs.textContent = '状態の言葉を最初の一覧に戻す';
+      rs.addEventListener('click', function () {
+        armOnce(rs, 'もう一度押すと最初の一覧に戻ります', function () { W.groups = defaultGroups(); changed(); });
+      });
+      body.appendChild(rs);
+    } else {
+      body.appendChild(note('アルファベット順に自動で並びます。×を2回押すと消えます。'));
+      var list = document.createElement('div'); list.className = 'wl';
+      sortedModels().forEach(function (m) {
+        list.appendChild(wordRow(m, undefined, undefined, function () { W.models.splice(W.models.indexOf(m), 1); }));
+      });
+      var sec = section('型式（' + W.models.length + '）', list);
+      sec.insertBefore(addRow('addModel', '型式を追加（例 ZD8）', function (v) {
+        v = v.toUpperCase();
+        if (W.models.indexOf(v) < 0) W.models.push(v);
+      }), list);
+      body.appendChild(sec);
+    }
+    body.appendChild(moveBox());
+    body.scrollTop = keep;
+  }
+  function changed() { saveWords(); renderSettings(); rebuild(); }
+
+  // 引っ越し：ホーム画面のアイコン（アプリ）と Safari は保存場所が別なので、番号の続き・足した言葉・設定を文字で運ぶ
+  function moveBox() {
+    var box = document.createElement('div'); box.className = 'move';
+    box.innerHTML = '<b>別のアイコン・Safari へ引き継ぐ</b>' +
+      '<p class="setnote" style="margin:0">ホーム画面のアイコンと Safari では、番号の続きや足した言葉が別々に保存されます。前に使っていた方で「コピー」→ 新しい方でここに貼り付けて読み込みます。新しい方ですでに番号を進めているときは「言葉と設定だけ」を選んでください。</p>';
+    var copy = document.createElement('button'); copy.textContent = '引き継ぎ用の文字をコピー';
+    var ta = document.createElement('textarea'); ta.id = 'moveText'; ta.rows = 3; ta.placeholder = 'ここに貼り付け';
+    var loadW = document.createElement('button'); loadW.textContent = '言葉と設定だけ読み込む（番号は今のまま）';
+    var load = document.createElement('button'); load.textContent = '全部読み込む（番号も前の内容に置き換え）';
+    load.style.background = '#eeeeee'; load.style.color = '#111111';
+    copy.addEventListener('click', function () {
+      var pre = ''; try { pre = localStorage.getItem(PRE_KEY) || ''; } catch (e) {}
+      var s = JSON.stringify({ banGoFuda: 1, S: S, W: W, prefix: pre });
+      var done = function () { copy.textContent = 'コピーしました'; setTimeout(function () { copy.textContent = '引き継ぎ用の文字をコピー'; }, 2500); };
+      var fallback = function () { ta.value = s; ta.focus(); ta.select(); copy.textContent = '下の文字を長押しでコピーしてください'; };
+      try { navigator.clipboard.writeText(s).then(done, fallback); } catch (e) { fallback(); }
+    });
+    function readMove(btn) {
+      var d;
+      try { d = JSON.parse(ta.value); } catch (e) { d = null; }
+      if (!d || d.banGoFuda !== 1 || !d.W || !d.W.groups) { btn.textContent = '読み込めない文字です（コピーし直してください）'; return null; }
+      return d;
+    }
+    // 言葉と設定だけ：運んできた一覧を元に、こちらで足した言葉・型式、押した回数、最近使ったを足し合わせる。
+    // 番号の続き・撮り方・引き継ぎの設定は、こちらのまま
+    loadW.addEventListener('click', function () {
+      var d = readMove(loadW);
+      if (!d) return;
+      armOnce(loadW, 'もう一度押すと読み込みます（番号は今のまま）', function () {
+        var out = JSON.parse(JSON.stringify(d.W)), dflt = {};
+        GROUPS.forEach(function (g) { g.words.forEach(function (w) { dflt[w] = 1; }); });
+        W.groups.forEach(function (g) {
+          var t = out.groups.filter(function (x) { return x.name === g.name; })[0];
+          if (!t) { out.groups.push(g); return; }
+          g.words.forEach(function (w) { if (!dflt[w] && t.words.indexOf(w) < 0) t.words.push(w); });
+        });
+        W.models.forEach(function (m) { if (out.models.indexOf(m) < 0 && MODELS.indexOf(m) < 0) out.models.push(m); });
+        out.use = out.use || {};
+        Object.keys(W.use || {}).forEach(function (w) { out.use[w] = (out.use[w] || 0) + W.use[w]; });
+        ['recentModels', 'recentWh'].forEach(function (k) {
+          var a = [];
+          (W[k] || []).concat(out[k] || []).forEach(function (v) { if (a.indexOf(v) < 0) a.push(v); });
+          out[k] = a.slice(0, 4);
+        });
+        out.carry = W.carry; out.sepA = W.sepA; out.support = W.support;
+        try { localStorage.setItem(WORDS_KEY, JSON.stringify(out)); } catch (e) {}
+        location.reload();
+      });
+    });
+    load.addEventListener('click', function () {
+      var d = readMove(load);
+      if (!d) return;
+      armOnce(load, 'もう一度押すと読み込みます（今の内容は置き換わります）', function () {
+        try {
+          localStorage.setItem(WORDS_KEY, JSON.stringify(d.W));
+          if (d.S && d.S.generated && d.S.generated.length) localStorage.setItem(KEY, JSON.stringify(d.S));
+          if (d.prefix) localStorage.setItem(PRE_KEY, d.prefix);
+        } catch (e) {}
+        location.reload();
+      });
+    });
+    box.appendChild(copy); box.appendChild(ta); box.appendChild(loadW); box.appendChild(load);
+    return box;
+  }
+
+  $('setBtn').addEventListener('click', function () {
+    $('carryChk').checked = W.carry !== false;
+    $('supChk').checked = supportOn();
+    drawMode();
+    $('settings').hidden = false; renderSettings();
+  });
+  $('carryChk').addEventListener('change', function () { W.carry = this.checked; saveWords(); rebuild(); });
+  $('supChk').addEventListener('change', function () { W.support = this.checked; saveWords(); rebuild(); });
+  function drawMode() {
+    $('modeNormal').setAttribute('aria-selected', !sepOn());
+    $('modeSep').setAttribute('aria-selected', sepOn());
+    $('modeNote').textContent = sepOn()
+      ? '次へ（はらう）で「番号 → 区切りA → 次の番号」と進みます。商品写真 → 区切りA → 状態つきの番号、の順に撮ります。'
+      : '次へ（はらう）で番号だけが進みます（今までと同じ）。';
+  }
+  function setMode(sep) { buzz(); W.sepA = sep; if (S) S.onSep = false; saveWords(); drawMode(); rebuild(); }
+  $('modeNormal').addEventListener('click', function () { setMode(false); });
+  $('modeSep').addEventListener('click', function () { setMode(true); });
+  $('setClose').addEventListener('click', function () { $('settings').hidden = true; });
+  $('setTabWords').addEventListener('click', function () { setTab = 'words'; $('setBody').scrollTop = 0; renderSettings(); });
+  $('setTabModels').addEventListener('click', function () { setTab = 'models'; $('setBody').scrollTop = 0; renderSettings(); });
+
+  function showTab(front) {
+    $('paneFront').hidden = !front; $('paneBack').hidden = front;
+    $('tabFront').setAttribute('aria-selected', front); $('tabBack').setAttribute('aria-selected', !front);
+    $('words').scrollTop = 0;
+  }
+  $('tabBack').addEventListener('click', function () { showTab(false); });
+  $('tabFront').addEventListener('click', function () { showTab(true); });
+
+  $('stateBtn').addEventListener('click', function () { openSheet(false); });
+  $('memo').addEventListener('click', function () { openSheet(false); });
+  $('doneBtn').addEventListener('click', function () {
+    $('note').blur(); $('stateSheet').hidden = true; editLine = null; selLine = null; render();
+  });
+  $('stateSheet').addEventListener('click', function (e) { if (e.target === this) $('doneBtn').click(); });
+
+  $('sepBtn').addEventListener('click', function () {
+    buzz();
+    // 行に足している途中なら、それを終えて最後の行に戻る
+    if (editLine !== null) { editLine = null; selLine = null; render(); return; }
+    var t = memo(cur()).tokens;
+    if (t.length && t[t.length - 1] !== SEP) { t.push(SEP); render(); }
+  });
+  $('undoBtn').addEventListener('click', function () {
+    var t = memo(cur()).tokens;
+    buzz();
+    if (editLine !== null) {
+      var r = lineRanges(t)[editLine];
+      if (r) {
+        if (r[1] - r[0] > 1) t.splice(r[1] - 1, 1);
+        else { deleteLine(editLine); editLine = null; }
+      }
+    } else t.pop();
+    render();
+  });
+  // 前と同じ：ひとつ前の番号の状態と自由記載を、今の番号に写す（今あるものの後ろに足す）
+  $('copyPrevBtn').addEventListener('click', function () {
+    var p = S.idx > 0 ? S.memos[S.generated[S.idx - 1]] : null;
+    if (!p) return;
+    buzz();
+    keepForUndo('前の番号（' + S.generated[S.idx - 1] + '）の状態を写しました');
+    var m = memo(cur());
+    editLine = null; selLine = null;
+    var src = p.tokens.slice();
+    while (src.length && src[src.length - 1] === SEP) src.pop();
+    if (src.length) {
+      if (m.tokens.length && m.tokens[m.tokens.length - 1] !== SEP) m.tokens.push(SEP);
+      m.tokens = m.tokens.concat(src);
+    }
+    if (p.note) { m.note = m.note ? m.note + '\n' + p.note : p.note; $('note').value = m.note; }
+    render();
+  });
+  // 自由記載は番号ごとに1つ。書いた行はそのまま撮影画面の状態の下に出る
+  $('note').addEventListener('input', function () { memo(cur()).note = this.value; render(); });
+
+  // 全消しは2回押し（1回目で赤くなる）
+  var clearTimer = null;
+  $('clearBtn').addEventListener('click', function () {
+    var b = $('clearBtn');
+    if (!b.classList.contains('arm')) {
+      b.classList.add('arm'); b.textContent = 'もう一度';
+      clearTimer = setTimeout(function () { b.classList.remove('arm'); b.textContent = '全消し'; }, 2500);
+      return;
+    }
+    clearTimeout(clearTimer);
+    b.classList.remove('arm'); b.textContent = '全消し';
+    keepForUndo('全部消しました');
+    var m = memo(cur()); m.tokens = []; m.model = ''; m.wh = ''; m.size = ''; m.note = '';
+    editLine = null; selLine = null;
+    $('note').value = '';
+    render();
+  });
+
+  // ---- 番号の移動 ----
+  // 区切りQRをはさむときは「番号 → 区切りA → 次の番号」。S.onSep は「今の番号の手前の区切りA」を出している印
+  function goNext() {
+    editLine = null; selLine = null;
+    if (S.onSep && sepOn()) { S.onSep = false; render(); return; }
+    if (S.idx < S.generated.length - 1) S.idx += 1;
+    else pushId(S.prefix, S.nextNum);
+    S.onSep = sepOn();
+    render();
+  }
+  function goPrev() {
+    editLine = null; selLine = null;
+    if (S.onSep && sepOn()) {
+      if (S.idx > 0) { S.idx -= 1; S.onSep = false; render(); }
+      return;
+    }
+    if (sepOn()) { S.onSep = true; render(); return; }
+    if (S.idx > 0) { S.idx -= 1; render(); }
+  }
+  $('nextBtn').addEventListener('click', goNext);
+  $('prevBtn').addEventListener('click', goPrev);
+
+  // 左右にはらうと次へ／戻る（元の番号札モードと同じ）
+  var px = null, py = null;
+  $('stage').addEventListener('pointerdown', function (e) { px = e.clientX; py = e.clientY; });
+  $('stage').addEventListener('pointerup', function (e) {
+    if (px === null) return;
+    var dx = e.clientX - px, dy = e.clientY - py;
+    px = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? goNext() : goPrev(); }
+  });
+  $('stage').addEventListener('pointercancel', function () { px = null; });
+
+  // ---- 番号を指定（記号は9999まで変わらないので、ふだんは数字だけ） ----
+  var draftP = 'C', draftN = '', pickMode = false;
+  try { draftP = localStorage.getItem(PRE_KEY) || draftP; } catch (e) {}
+  function drawDraft() {
+    $('idPre').textContent = draftP;
+    $('preChipVal').textContent = draftP;
+    $('idNum').textContent = draftN || '0000';
+    $('idNum').classList.toggle('ph', !draftN);
+    $('preChip').classList.toggle('on', pickMode);
+    $('letters').hidden = !pickMode;
+    $('digits').hidden = pickMode;
+    document.querySelectorAll('#letters [data-l]').forEach(function (b) {
+      b.classList.toggle('on', draftP === b.dataset.l);
+    });
+    $('setNum').disabled = pickMode || !draftN;
+  }
+  (function buildKeys() {
+    var L = $('letters');
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(function (c) {
+      var b = document.createElement('button'); b.textContent = c; b.dataset.l = c;
+      b.addEventListener('click', function () { buzz(); draftP = c; pickMode = false; drawDraft(); });
+      L.appendChild(b);
+    });
+    $('preChip').addEventListener('click', function () { buzz(); pickMode = !pickMode; drawDraft(); });
+
+    var D = $('digits');
+    ['1','2','3','4','5','6','7','8','9','1つ消す','0','クリア'].forEach(function (k) {
+      var b = document.createElement('button'); b.textContent = k;
+      if (k.length > 1) b.className = 'small';
+      b.addEventListener('click', function () {
+        buzz();
+        if (k === '1つ消す') draftN = draftN.slice(0, -1);
+        else if (k === 'クリア') draftN = '';
+        else if (draftN.length < 4 && !(draftN === '' && k === '0')) draftN += k;
+        drawDraft();
+      });
+      D.appendChild(b);
+    });
+  })();
+
+  function openNum(jump) {
+    $('numModal').hidden = false;
+    $('cancelNum').hidden = !jump;
+    $('resetBtn').hidden = !jump;
+    $('numTitle').textContent = jump ? '番号を直接指定して進める' : '記号と開始番号を入れてください';
+    if (jump && S) draftP = S.prefix;
+    draftN = ''; pickMode = false;
+    drawDraft();
+  }
+  $('jumpToggle').addEventListener('click', function () { openNum(true); });
+  $('cancelNum').addEventListener('click', function () { $('numModal').hidden = true; });
+  $('setNum').addEventListener('click', function () {
+    var p = draftP, n = parseInt(draftN, 10);
+    if (!/^[A-Z]{1,3}$/.test(p) || !(n >= 1 && n <= MAX)) return;
+    try { localStorage.setItem(PRE_KEY, p); } catch (e) {}
+    if (!S) S = { prefix: p, nextNum: n, generated: [], idx: -1, memos: {} };
+    pushId(p, n);
+    S.onSep = false;
+    $('numModal').hidden = true;
+    render();
+    keepAwake();
+  });
+  var resetTimer = null;
+  $('resetBtn').addEventListener('click', function () {
+    var b = $('resetBtn');
+    if (!b.classList.contains('arm')) {
+      b.classList.add('arm'); b.textContent = 'もう一度押すと全部消えます';
+      resetTimer = setTimeout(function () { b.classList.remove('arm'); b.textContent = '入力した控えを全部消して最初から'; }, 3000);
+      return;
+    }
+    clearTimeout(resetTimer);
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    location.reload();
+  });
+
+  // 撮影中に画面が消えないように（使えない環境では何もしない）
+  var lock = null;
+  function keepAwake() {
+    try {
+      if (navigator.wakeLock && !lock) navigator.wakeLock.request('screen').then(function (l) {
+        lock = l; l.addEventListener('release', function () { lock = null; });
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && S) keepAwake(); });
+  window.addEventListener('resize', function () { if (S) fit(); });
+
+  // ---- 起動 ----
+  S = load();
+  // 以前の「型式を追加」で足した型式は、設定の一覧へ移す
+  if (S && S.custom && S.custom.length) {
+    S.custom.forEach(function (m) { if (W.models.indexOf(m) < 0) W.models.push(m); });
+    delete S.custom; saveWords();
+  }
+  buildPanels();
+  if (S && S.generated && S.generated.length) {
+    S.memos = S.memos || {};
+    render(); keepAwake();
+  } else {
+    S = null;
+    openNum(false);
+  }
+})();
+</script>
+
+</body>
+</html>
