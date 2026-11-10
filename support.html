@@ -131,9 +131,9 @@
   .seg button[aria-selected="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
   #words { flex: 1; min-height: 0; overflow-y: auto; position: relative; }
   /* グループへ飛ぶボタン（一覧の上に固定） */
-  #jump { position: sticky; top: 0; z-index: 2; background: var(--bg); display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 6px; scrollbar-width: none; }
-  #jump::-webkit-scrollbar { display: none; }
-  #jump button { flex: 0 0 auto; min-height: 40px; padding: 0 14px; font-size: 14px; font-weight: bold; border: 1.5px solid var(--line); border-radius: 20px; background: var(--soft); }
+  #jump, #jumpF { position: sticky; top: 0; z-index: 2; background: var(--bg); display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 6px; scrollbar-width: none; }
+  #jump::-webkit-scrollbar, #jumpF::-webkit-scrollbar { display: none; }
+  #jump button, #jumpF button { flex: 0 0 auto; min-height: 40px; padding: 0 14px; font-size: 14px; font-weight: bold; border: 1.5px solid var(--line); border-radius: 20px; background: var(--soft); }
   #jump button.hot { border-color: var(--accent); color: var(--accent); background: var(--bg); }
   #quick h2 { color: var(--accent); }
   .recent { margin-bottom: 8px; }
@@ -2638,7 +2638,7 @@ var qrcode = function() {
                 'DC5','NA8C','VCH10','SH9','CL1','ACR30','ZRE152','YAM','BMM','CM2','CKV36','CP3'];
   var WH = ['ア','イ','ウ','エ','オ','カ','キ','ク','ケ','コ','サ','シ','ス',
             'セ','ソ','タ','チ','ツ','テ','ト','ナ','ニ','ヌ','ネ','ノ'];
-  var SIZES = ['60(B)','80(C)','100(D)','120(E)','140(F)','160(G)','180(H)','200(I)','220(J)',
+  var SIZES = ['コンパクト(A)','定形外(S)','60(B)','80(C)','100(D)','120(E)','140(F)','160(G)','180(H)','200(I)','220(J)',
                '240(K)','260(L)','チャーター260〜300','チャーター300〜340'];
   // ラミネート表（裏）。列ごとにまとめ、重複（カプラー・戻り悪い・ひび割れ）は1つに
   var GROUPS = [
@@ -2986,6 +2986,7 @@ var qrcode = function() {
   }
 
   function jumpTo(el) { $('words').scrollTop = el.offsetTop - $('jump').offsetHeight - 2; }
+  function jumpToF(el) { var j = $('jumpF'); $('words').scrollTop = el.offsetTop - (j ? j.offsetHeight : 0) - 2; }      // 型式・倉庫・サイズの面（上に固定したボタンの高さぶん手前に止める）
 
   function buildPanels() {
     var back = $('paneBack');
@@ -3023,6 +3024,14 @@ var qrcode = function() {
       var box = document.createElement('div'); box.className = 'recent'; box.id = k[1]; box.hidden = true;
       k[0].insertBefore(box, k[0].querySelector('.grid'));
     });
+    // 上に固定する「型式／倉庫／サイズへ飛ぶ」ボタン（状態の面の「位置／部位…」と同じ。長い一覧をスクロールしなくてよい）
+    var jumpF = document.createElement('div'); jumpF.id = 'jumpF';
+    [['型式', mSec], ['倉庫', whSec], ['サイズ', sSec]].forEach(function (k) {
+      var b = document.createElement('button'); b.textContent = k[0];
+      b.addEventListener('click', function () { jumpToF(k[1]); });
+      jumpF.appendChild(b);
+    });
+    front.appendChild(jumpF);
     front.appendChild(mSec); front.appendChild(whSec); front.appendChild(sSec);
     if (S) buildQuick();
   }
@@ -3092,7 +3101,7 @@ var qrcode = function() {
     showTab(!!front);
     if (key) {
       var el = document.querySelector('#paneFront [data-key="' + key + '"]');
-      if (el) $('words').scrollTop = el.offsetTop - 4;
+      if (el) { var jf = $('jumpF'); $('words').scrollTop = el.offsetTop - (jf ? jf.offsetHeight : 0) - 4; }
     }
     render();
   }
