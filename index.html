@@ -317,7 +317,11 @@
   </label>
   <label class="carry" for="carryChk">
     <input id="carryChk" type="checkbox">
-    <span>型式を次の番号へ引き継ぐ<small>倉庫・サイズ・状態は番号ごとに空から始まります</small></span>
+    <span>型式を次の番号へ引き継ぐ<small>同じ車の部品を続けて撮るときに便利です</small></span>
+  </label>
+  <label class="carry" for="carryWhChk">
+    <input id="carryWhChk" type="checkbox">
+    <span>倉庫も次の番号へ引き継ぐ<small>同じ倉庫に置く部品が続くときはオンに。オフなら、倉庫は番号ごとに空から始まります（サイズ・状態は、いつも番号ごとに空から）</small></span>
   </label>
   <p class="setnote">番号が消えないように：iPhoneは Safari の共有ボタン →「ホーム画面に追加」で作ったアイコンから開いてください（Safariで開くと、7日ほど使わないと番号が消えることがあります）。</p>
   <div class="seg" role="tablist">
@@ -2716,6 +2720,7 @@ var qrcode = function() {
     S.idx = S.generated.length - 1;
     var m = memo(id);
     if (isNew && prev && W.carry !== false) m.model = prev.model;
+    if (isNew && prev && W.carryWh === true) m.wh = prev.wh;   // 倉庫の引き継ぎは、選んだ人だけ（はじめはオフ＝今までどおり）
     var r = incrementId(p, n);
     S.prefix = r[0]; S.nextNum = r[1];
     trim();
@@ -3012,7 +3017,7 @@ var qrcode = function() {
     var mg = makeGrid(sortedModels(), '', pick('model'), 'model');
     var mSec = withAdd(section('型式' + (W.carry !== false ? '（次の番号へ引き継ぎ）' : ''), mg), mg, 'quickModel', '型式を追加（例 ZD8）',
       function (v) { v = v.toUpperCase(); if (W.models.indexOf(v) < 0) W.models.push(v); memo(cur()).model = v; remember('model', v); });
-    var whSec = section('倉庫', makeGrid(WH, 'c5', pick('wh'), 'wh'));
+    var whSec = section('倉庫' + (W.carryWh === true ? '（次の番号へ引き継ぎ）' : ''), makeGrid(WH, 'c5', pick('wh'), 'wh'));
     if (MAP.length) {
       var mb = document.createElement('button'); mb.className = 'mapBtn'; mb.textContent = '地図から倉庫を選ぶ';
       mb.addEventListener('click', openMap);
@@ -3280,7 +3285,7 @@ var qrcode = function() {
           (W[k] || []).concat(out[k] || []).forEach(function (v) { if (a.indexOf(v) < 0) a.push(v); });
           out[k] = a.slice(0, 4);
         });
-        out.carry = W.carry; out.sepA = W.sepA; out.support = W.support;
+        out.carry = W.carry; out.carryWh = W.carryWh; out.sepA = W.sepA; out.support = W.support;
         try { localStorage.setItem(WORDS_KEY, JSON.stringify(out)); } catch (e) {}
         location.reload();
       });
@@ -3303,11 +3308,13 @@ var qrcode = function() {
 
   $('setBtn').addEventListener('click', function () {
     $('carryChk').checked = W.carry !== false;
+    $('carryWhChk').checked = W.carryWh === true;
     $('supChk').checked = supportOn();
     drawMode();
     $('settings').hidden = false; renderSettings();
   });
   $('carryChk').addEventListener('change', function () { W.carry = this.checked; saveWords(); rebuild(); });
+  $('carryWhChk').addEventListener('change', function () { W.carryWh = this.checked; saveWords(); rebuild(); });
   $('supChk').addEventListener('change', function () { W.support = this.checked; saveWords(); rebuild(); });
   function drawMode() {
     $('modeNormal').setAttribute('aria-selected', !sepOn());
