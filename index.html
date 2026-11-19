@@ -221,6 +221,145 @@
 
   #resetBtn { align-self: center; font-size: 11px; background: none; border: none; color: #aaaaaa; text-decoration: underline; }
   #resetBtn.arm { color: var(--accent); font-weight: bold; }
+
+  /* =====================================================================
+     新しい見た目（かんたん／出品サポート）。設定の「使い方」で選んだときだけ body.ui-new が付く。
+     「いつもの」は上のCSSのまま（ほかの作業者の画面は変わらない）
+     ===================================================================== */
+  #carline { display: none; }
+  .seg.s3 { grid-template-columns: 1fr 1fr 1fr; }
+  #allBtn { display: none; }
+  #paneCar .cempty, .rrow { }
+
+  body.ui-new {
+    --bg: #f6f7fb; --ink: #0f172a; --muted: #64748b; --soft: #eef1f6; --line: #e2e8f0;
+    --accent: #5b5bf5; --accent-soft: #eef0ff; --accent-ink: #3f3fd1; --dark: #334155;
+    --dim: rgba(15, 23, 42, 0.45); --card: #ffffff; --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    font-family: 'Inter', 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body.ui-new button:focus-visible, body.ui-new input:focus-visible, body.ui-new textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* 撮影する画面 */
+  body.ui-new #mode-label { font-size: 11px; letter-spacing: .06em; color: var(--muted); padding-top: 12px; }
+  body.ui-new #progress { margin-top: 6px; padding: 3px 12px; font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
+  body.ui-new #number { font-size: 76px; font-weight: 700; letter-spacing: -.02em; padding-top: 8px; }
+  body.ui-new #meta { gap: 8px; padding-top: 6px; }
+  body.ui-new #meta button { font-size: 15px; font-weight: 600; border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; background: var(--card); box-shadow: 0 1px 2px rgba(15, 23, 42, .06); }
+  body.ui-new #qrcode img, body.ui-new #qrcode2 img { background: #ffffff; border-radius: 18px; border: 1px solid var(--line); box-shadow: var(--shadow); }
+  body.ui-new #memo { font-size: 24px; font-weight: 700; color: var(--ink); }
+  body.ui-new #memo .free { font-weight: 500; color: var(--dark); }
+  body.ui-new.sep #stage { background: repeating-linear-gradient(135deg, var(--bg) 0 18px, #eceff6 18px 36px); }
+
+  /* 車の行（出品サポート） */
+  body.ui-support #carline {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; max-width: 100%; min-height: 40px; padding: 8px 16px;
+    font-size: 14px; font-weight: 600; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid #c7cbff; border-radius: 999px;
+  }
+  body.ui-support #carline[hidden] { display: none; }
+  body.ui-support #carline::after { content: ''; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin-top: -3px; }
+  body.ui-support #carline.none { color: var(--muted); background: var(--card); border-style: dashed; border-color: #cbd5e1; }
+
+  /* 下の操作 */
+  body.ui-new #subrow { gap: 8px; padding-top: 10px; }
+  body.ui-new #stateBtn { font-size: 15px; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid #c7cbff; border-radius: 14px; padding: 14px 0; }
+  body.ui-new #setBtn, body.ui-new #jumpToggle { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 0; }
+  body.ui-new #btnrow button { font-size: 19px; font-weight: 700; padding: 18px 0; border-radius: 16px; }
+  body.ui-new #prevBtn { background: var(--card); border: 1px solid var(--line); color: var(--dark); }
+  body.ui-new #nextBtn { background: var(--accent); box-shadow: 0 8px 20px rgba(91, 91, 245, .35); }
+  body.ui-new #nextBtn:active { background: var(--accent-ink); }
+
+  /* シート */
+  body.ui-new .overlay { background: var(--dim); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+  body.ui-new .sheet { background: var(--bg); }
+  body.ui-new #stateSheet .sheet { border-radius: 26px 26px 0 0; gap: 10px; padding-top: 8px; box-shadow: 0 -8px 32px rgba(15, 23, 42, .18); }
+  body.ui-new #stateSheet .sheet::before { content: ''; flex: none; align-self: center; width: 42px; height: 5px; border-radius: 3px; background: #cbd5e1; margin-bottom: 2px; }
+  body.ui-new #sheetMeta button { font-size: 13px; font-weight: 600; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid #c7cbff; border-radius: 999px; padding: 6px 12px; }
+  body.ui-new #preview { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; font-size: 15px; }
+  body.ui-new #preview > div { border-bottom: 1px solid var(--soft); }
+  body.ui-new #preview .ln.sel { background: var(--soft); border-radius: 8px; }
+  body.ui-new #preview .ln.editing { background: var(--accent-soft); border-left-color: var(--accent); border-radius: 8px; }
+  body.ui-new #preview .nextln { color: var(--accent-ink); }
+  body.ui-new .lineAct button { border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+  body.ui-new .lineAct button.del { background: #e11d48; border-color: #e11d48; }
+  body.ui-new #tools button { background: var(--card); border: 1px solid var(--line); border-radius: 12px; color: var(--dark); }
+  body.ui-new #sepBtn { background: var(--ink) !important; border-color: var(--ink) !important; color: #ffffff !important; }
+  body.ui-new #clearBtn.arm { background: #e11d48 !important; border-color: #e11d48 !important; }
+  body.ui-new .seg { background: var(--soft); border-radius: 14px; padding: 4px; }
+  body.ui-new .seg button { border-radius: 10px; font-size: 14px; min-height: 40px; }
+  body.ui-new .seg button[aria-selected="true"] { background: var(--card); color: var(--accent-ink); box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+  body.ui-new #tabsNew { display: grid; }
+  body.ui-new #tabsNew[hidden] { display: none !important; }
+  body.ui-new #jump, body.ui-new #jumpF { background: var(--bg); }
+  body.ui-new #jump button, body.ui-new #jumpF button { border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--dark); }
+  body.ui-new #jump button.hot { color: var(--accent-ink); border-color: #c7cbff; background: var(--accent-soft); }
+  body.ui-new #quick h2 { color: var(--accent-ink); }
+  body.ui-new .sec h2 { font-size: 11px; color: var(--muted); }
+  body.ui-new .grid button { background: var(--card); border: 1px solid var(--line); border-radius: 12px; color: var(--ink); }
+  body.ui-new .grid button:active, body.ui-new .grid button.flash, body.ui-new .grid button.on { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  body.ui-new .grid button.add { background: transparent; border-style: dashed; }
+  body.ui-new .mapBtn { border: 1px solid #c7cbff; background: var(--accent-soft); color: var(--accent-ink); border-radius: 12px; }
+  body.ui-new .recent .lbl { color: var(--accent-ink); }
+  body.ui-new #doneBtn { background: var(--accent); border-radius: 16px; box-shadow: 0 8px 20px rgba(91, 91, 245, .3); }
+  body.ui-new #toast { background: var(--ink); border-radius: 14px; }
+  body.ui-new #toastUndo { background: var(--accent); }
+
+  /* シートのタブごとの見せ方 */
+  body.ui-new #note { display: none; order: 4; flex: 1 1 auto; min-height: 140px; font-size: 17px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+  body.ui-new .sheet[data-tab="memo"] #note { display: block; }
+  body.ui-new .sheet[data-tab="place"] #tools, body.ui-new .sheet[data-tab="car"] #tools { display: none; }
+  body.ui-new .sheet[data-tab="place"] #preview, body.ui-new .sheet[data-tab="car"] #preview { display: none; }
+  body.ui-new #tabsNew { order: 3; }
+  body.ui-new #words { order: 4; }
+  body.ui-new #doneBtn { order: 9; }
+  /* かんたん：状態は「よく使う」だけ。すべての言葉は、ボタンを押したときだけ */
+  body.ui-easy:not(.showall) #paneBack .grp, body.ui-easy:not(.showall) #jump { display: none; }
+  body.ui-easy:not(.showall) #allBtn { display: block; width: 100%; min-height: 46px; margin-top: 10px; font-size: 14px; font-weight: 600; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid #c7cbff; border-radius: 12px; }
+
+  /* 車タブ */
+  #paneCar { padding-bottom: 8px; }
+  .clab { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .04em; margin: 12px 2px 4px; display: flex; align-items: center; gap: 6px; }
+  .autotag { font-size: 10px; font-weight: 600; color: #15803d; background: #dcfce7; border-radius: 6px; padding: 1px 6px; letter-spacing: 0; }
+  .chead { display: flex; align-items: baseline; gap: 10px; padding: 4px 2px 0; }
+  .cmodel { font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+  .csub { font-size: 12px; color: var(--muted); }
+  .cfield { display: flex; flex-direction: column; min-width: 0; }
+  .cpair > * { min-width: 0; }
+  #words { overflow-x: hidden; }
+  .cfield input { width: 100%; min-width: 0; font-size: 17px; font-family: inherit; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); min-height: 48px; }
+  .cfield input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91, 91, 245, .18); }
+  .cpair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .chint { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 6px 2px 0; }
+  .cempty { display: flex; flex-direction: column; gap: 8px; padding: 18px 14px; background: var(--card); border: 1px dashed #cbd5e1; border-radius: 14px; margin-top: 8px; }
+  .cempty b { font-size: 15px; } .cempty span { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .cgo { min-height: 46px; font-size: 15px; font-weight: 700; color: #ffffff; background: var(--accent); border: none; border-radius: 12px; }
+  .cars { display: flex; flex-direction: column; gap: 6px; }
+  .cars button { min-height: 46px; text-align: left; padding: 0 14px; font-size: 14px; font-weight: 600; background: var(--card); border: 1px solid var(--line); border-radius: 12px; color: var(--ink); }
+  .cars button.none { color: var(--muted); font-weight: 500; border-style: dashed; }
+  /* 設定：車のルール */
+  .rrow { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .rrow b { grid-column: 1 / -1; font-size: 15px; }
+  .rrow input { min-width: 0; font-size: 15px; font-family: inherit; padding: 10px; border: 1px solid #cccccc; border-radius: 8px; background: var(--bg); color: var(--ink); }
+  .rrow input:last-child { grid-column: 1 / -1; }
+
+  /* 車タブ：ポチポチ入力（候補ボタン・年式／走行のパネル） */
+  .cchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .cchips button { min-height: 44px; padding: 0 14px; font-size: 14px; font-weight: 600; background: var(--card, #fff); border: 1px solid var(--line); border-radius: 999px; color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
+  .cchips button small { font-size: 10px; font-weight: 500; color: var(--muted); }
+  .cchips button.on { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  .cchips button.on small { color: #e0e1ff; }
+  .pshow { min-height: 52px; text-align: left; padding: 0 14px; font-size: 18px; font-weight: 600; background: var(--card, #fff); border: 1px solid var(--line); border-radius: 12px; color: var(--ink); }
+  .pshow.ph { color: var(--muted); font-weight: 500; font-size: 16px; }
+  .pshow.open { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91, 91, 245, .18); }
+  .pad { background: var(--card, #fff); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px 10px; margin-top: 6px; }
+  .pad .clab { margin: 8px 2px 4px; }
+  .pgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .pgrid.p3 { grid-template-columns: repeat(3, 1fr); }
+  .pgrid button { min-height: 46px; font-size: 16px; font-weight: 600; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); }
+  .pgrid.keys button { min-height: 54px; font-size: 22px; }
+  .pgrid button.on { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  .pgrid button.soft, .pad > button.soft { background: var(--soft); color: var(--dark); }
+  .pad > button.wide { width: 100%; min-height: 44px; margin-top: 8px; font-size: 14px; font-weight: 600; border: none; border-radius: 10px; }
 </style>
 </head>
 <body>
@@ -228,6 +367,7 @@
 <div id="stage">
   <div id="mode-label">番号札モード（スマホ単独）</div>
   <div id="progress"></div>
+  <button id="carline" hidden></button>
   <div id="number"></div>
   <div id="meta"></div>
   <div id="qrwrap"><div id="qrcode"></div><div id="qrcode2" aria-hidden="true"></div></div>
@@ -259,9 +399,11 @@
       <button id="tabBack" role="tab" aria-selected="true">状態</button>
       <button id="tabFront" role="tab" aria-selected="false">型式・倉庫・サイズ</button>
     </div>
+    <div id="tabsNew" class="seg" role="tablist" hidden></div>
     <div id="words">
       <div id="paneBack"></div>
       <div id="paneFront" hidden></div>
+      <div id="paneCar" hidden></div>
     </div>
     <button id="doneBtn">できた（撮影へ）</button>
   </div>
@@ -303,6 +445,15 @@
     <h1>設定</h1>
     <button id="setClose">閉じる</button>
   </div>
+  <div class="mode" id="uiBox">
+    <div class="modeTitle">使い方<small>このスマホだけの設定です</small></div>
+    <div class="seg s3" role="radiogroup" aria-label="使い方">
+      <button id="uiClassic" role="radio" aria-selected="true">いつもの</button>
+      <button id="uiEasy" role="radio" aria-selected="false">かんたん</button>
+      <button id="uiSupport" role="radio" aria-selected="false">出品サポート</button>
+    </div>
+    <p class="setnote" id="uiNote"></p>
+  </div>
   <div class="mode">
     <div class="modeTitle">撮り方<small>このスマホだけの設定です。使う人ごとに選べます</small></div>
     <div class="seg" role="radiogroup" aria-label="撮り方">
@@ -324,9 +475,10 @@
     <span>倉庫も次の番号へ引き継ぐ<small>同じ倉庫に置く部品が続くときはオンに。オフなら、倉庫は番号ごとに空から始まります（サイズ・状態は、いつも番号ごとに空から）</small></span>
   </label>
   <p class="setnote">番号が消えないように：iPhoneは Safari の共有ボタン →「ホーム画面に追加」で作ったアイコンから開いてください（Safariで開くと、7日ほど使わないと番号が消えることがあります）。</p>
-  <div class="seg" role="tablist">
+  <div class="seg s3" role="tablist">
     <button id="setTabWords" role="tab" aria-selected="true">状態の言葉</button>
     <button id="setTabModels" role="tab" aria-selected="false">型式</button>
+    <button id="setTabCars" role="tab" aria-selected="false">車のルール</button>
   </div>
   <div id="setBody"></div>
 </div>
@@ -2747,11 +2899,41 @@ var qrcode = function() {
   // 管理番号QRは今のまま（読み取りツール exe は、管理番号の形のQRだけを区切りに使う）。
   // データQRは「YKS1|管理番号|型式|倉庫|サイズ|状態の行／状態の行…」。「YKS1|」で始まり管理番号の形ではないので、exe は無視する。
   // 出品アシスタントが、番号札の写真からこのQRを読んで、型式・倉庫・サイズ・状態メモを下書きに入れる
-  function supportOn() { return W.support === true; }
+  var RULES_SEED = {"ACM21":{"car":"イプサム","cars":[["トヨタ イプサム",10]],"cols":[],"mk":"トヨタ","tail":"ACM26","tails":[["ACM26",9]]},"ACM26":{"car":"イプサム","cars":[["トヨタ イプサム",3]],"cols":[["042",1]],"mk":"トヨタ","tail":"ACM21","tails":[["ACM21",2]]},"ACR30":{"car":"エスティマ","cars":[["トヨタ エスティマ",53]],"cols":[["3J7",4]],"mk":"トヨタ","tail":"","tails":[]},"ALWE50":{"car":"エルグランド","cars":[["日産 エルグランド",18]],"cols":[],"mk":"日産","tail":"E50","tails":[["E50",18]]},"AMH20":{"car":"ヴェルファイア","cars":[["トヨタ ヴェルファイア",6]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"ANA10":{"car":"マークX ジオ","cars":[["トヨタ マークX ジオ",2]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"ANH10":{"car":"アルファード","cars":[["トヨタ アルファード",114]],"cols":[["209",13],["042",2],["10",1]],"mk":"トヨタ","tail":"ANH15 MNH10 MNH15","tails":[["ANH15 MNH10 MNH15",4],["ANH15",2]]},"ANH15":{"car":"アルファード","cars":[["トヨタ アルファード",43]],"cols":[["042",14]],"mk":"トヨタ","tail":"ANH10 MNH10 MNH15","tails":[["ANH10 MNH10 MNH15",2]]},"ANH20":{"car":"ヴェルファイア","cars":[["トヨタ ヴェルファイア",69],["トヨタ アルファード",3]],"cols":[["202",8]],"mk":"トヨタ","tail":"ANH25 GGH25","tails":[["ANH25 GGH25",2]]},"ANH20W":{"car":"ヴェルファイア","cars":[["トヨタ ヴェルファイア",6]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"BH9":{"car":"レガシィ","cars":[["スバル レガシィ",3]],"cols":[],"mk":"スバル","tail":"","tails":[]},"BP9":{"car":"レガシィ","cars":[["スバル レガシィ",16]],"cols":[["9P",15]],"mk":"スバル","tail":"","tails":[]},"BR9":{"car":"レガシィ","cars":[["スバル レガシィ",1],["スバル レガシィ LEGACY",1]],"cols":[],"mk":"スバル","tail":"","tails":[]},"CF2":{"car":"アコード","cars":[["ホンダ アコード",4]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"CF6":{"car":"HONDA アコード","cars":[["ホンダ HONDA アコード",3]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"CH9":{"car":"アコード","cars":[["ホンダ アコード",10]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"CKV36":{"car":"スカイライン","cars":[["日産 スカイライン",30],["日産 スカイライン クーペ",20]],"cols":[["QAA",1]],"mk":"日産","tail":"V36","tails":[["V36",24],["KV36",11]]},"CL1":{"car":"アコード ACCORD","cars":[["ホンダ アコード ACCORD",86],["ホンダ アコード",3]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"CM2":{"car":"アコード ワゴン","cars":[["ホンダ アコード ワゴン",15],["ホンダ アコード",3]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"CP3":{"car":"インスパイア","cars":[["ホンダ インスパイア",60],["ホンダ HONDA インスパイア",19]],"cols":[],"mk":"ホンダ","tail":"PB81P","tails":[["PB81P",2]]},"DC5":{"car":"インテグラ","cars":[["ホンダ インテグラ",331]],"cols":[["5P",5]],"mk":"ホンダ","tail":"B92P","tails":[["B92P",7],["CJ1",2],["D02MC",2]]},"E50":{"car":"エルグランド","cars":[["日産 エルグランド",4]],"cols":[],"mk":"日産","tail":"","tails":[]},"FA20":{"car":"フォレスター SJG","cars":[["スバル フォレスター SJG",21]],"cols":[],"mk":"スバル","tail":"SJ5","tails":[]},"FD1":{"car":"シビック","cars":[["ホンダ シビック",4]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"FD3":{"car":"シビック","cars":[["ホンダ シビック",2]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"GG3P":{"car":"アテンザ","cars":[["マツダ アテンザ",6]],"cols":[],"mk":"マツダ","tail":"","tails":[]},"GGA10":{"car":"マークX ジオ","cars":[["トヨタ マークX ジオ",4]],"cols":[],"mk":"トヨタ","tail":"ANA10 ANA15","tails":[]},"GGH20":{"car":"ヴェルファイア","cars":[["トヨタ ヴェルファイア",121],["トヨタ アルファード",86],["トヨタ アルファード ALPHARD",5]],"cols":[["202",44],["070",8],["3R9",1]],"mk":"トヨタ","tail":"ANH20 ANH25","tails":[["ANH20 ANH25",8],["ANH20 ANH25 GGH25",5]]},"GGH25":{"car":"ヴェルファイア","cars":[["トヨタ ヴェルファイア",2]],"cols":[["202",2]],"mk":"トヨタ","tail":"","tails":[]},"GP7":{"car":"インプレッサ スポーツ","cars":[["スバル インプレッサ スポーツ",55],["スバル インプレッサ",9]],"cols":[],"mk":"スバル","tail":"","tails":[]},"GSR50":{"car":"エスティマ","cars":[["トヨタ エスティマ",6]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"H56A":{"car":"パジェロミニ","cars":[["三菱 パジェロミニ",3]],"cols":[],"mk":"三菱","tail":"","tails":[]},"HA1W":{"car":"アイ i","cars":[["三菱 アイ i",3]],"cols":[],"mk":"三菱","tail":"","tails":[]},"HA25V":{"car":"アルト","cars":[["スズキ アルト",7]],"cols":[],"mk":"スズキ","tail":"","tails":[]},"HGY51":{"car":"シーマ","cars":[["日産 シーマ",3]],"cols":[],"mk":"日産","tail":"Y51","tails":[]},"HZ33":{"car":"フェアレディZ","cars":[["日産 フェアレディZ",58]],"cols":[["7P",1]],"mk":"日産","tail":"Z33","tails":[["Z33",7]]},"J50":{"car":"スカイライン クロスオーバー","cars":[["日産 スカイライン クロスオーバー",73]],"cols":[["KH3",3],["QAA",1]],"mk":"日産","tail":"NJ50","tails":[["NJ50",57],["K51",2]]},"JZS160":{"car":"アリスト","cars":[["トヨタ アリスト",12]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"KB1":{"car":"レジェンド","cars":[["ホンダ レジェンド",90],["ホンダ HONDA レジェンド",10]],"cols":[["B92P",8]],"mk":"ホンダ","tail":"","tails":[]},"KB2":{"car":"レジェンド","cars":[["ホンダ レジェンド",88],["ホンダ LEGEND レジェンド",54],["ホンダ HONDA レジェンド",3]],"cols":[],"mk":"ホンダ","tail":"KB1","tails":[["KB1",12]]},"KNY51":{"car":"フーガ","cars":[["日産 フーガ",193]],"cols":[["QAA",9],["KH3",6],["K23",2]],"mk":"日産","tail":"Y51","tails":[["Y51",94],["Y51 KY51",83],["KY51",6],["Y51 KY51 HY51",5],["N71 KY51 Y51",2]]},"KV36":{"car":"スカイライン","cars":[["日産 スカイライン",129],["日産 SKYLINE スカイライン",6]],"cols":[["QAA",5],["KH3",4]],"mk":"日産","tail":"V36","tails":[["V36",93],["CKV36",3],["JK10A",2],["V3",2],["JL00C",2]]},"KY51":{"car":"フーガ","cars":[["日産 フーガ",848]],"cols":[["KH3",39],["QAA",18],["RAM",8],["K23",5],["KBB",4],["KAT",3],["GAC",1],["VIP",1]],"mk":"日産","tail":"Y51","tails":[["Y51",499],["Y51 KNY51",218],["Y51 KNY51 HY51",14],["KH3 Y51",11],["Y51 HY51",9]]},"KZH100":{"car":"ハイエース","cars":[["トヨタ ハイエース",13]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"L175S":{"car":"ムーヴ","cars":[["ダイハツ ムーヴ",4]],"cols":[],"mk":"ダイハツ","tail":"R49","tails":[["R49",4]]},"L33":{"car":"ティアナ","cars":[["日産 ティアナ",222]],"cols":[["QAB",11]],"mk":"日産","tail":"G41","tails":[["G41",8],["D7",6],["EPN15",3]]},"L350S":{"car":"タント カスタム","cars":[["ダイハツ タント カスタム",4]],"cols":[],"mk":"ダイハツ","tail":"","tails":[]},"L375S":{"car":"タント","cars":[["ダイハツ タント",3]],"cols":[],"mk":"ダイハツ","tail":"L385S","tails":[["L385S",3]]},"L575S":{"car":"ムーヴコンテ","cars":[["ダイハツ ムーヴコンテ",3]],"cols":[],"mk":"ダイハツ","tail":"","tails":[]},"L675S":{"car":"ミラ ココア","cars":[["ダイハツ ミラ ココア",3]],"cols":[],"mk":"ダイハツ","tail":"L685S","tails":[["L685S",3]]},"LA600S":{"car":"タント カスタム","cars":[["ダイハツ タント カスタム",6]],"cols":[],"mk":"ダイハツ","tail":"LA610S","tails":[["LA610S",2]]},"LY3P":{"car":"MPV","cars":[["マツダ MPV",13]],"cols":[],"mk":"マツダ","tail":"","tails":[]},"MH23S":{"car":"ワゴンR スティングレー","cars":[["スズキ ワゴンR スティングレー",2]],"cols":[],"mk":"スズキ","tail":"","tails":[]},"NA8C":{"car":"ユーノス ロードスター","cars":[["マツダ ユーノス ロードスター",2],["マツダ ロードスター",2]],"cols":[],"mk":"マツダ","tail":"","tails":[]},"NB8C":{"car":"ロードスター","cars":[["マツダ ロードスター",406],["マツダ ロードスター 6速",78],["マツダ ロードスター 後期",10]],"cols":[["NB",32],["N053",4],["22A",2]],"mk":"マツダ","tail":"","tails":[]},"NJ50":{"car":"スカイライン クロスオーバー","cars":[["日産 スカイライン クロスオーバー",44]],"cols":[["QAA",15]],"mk":"日産","tail":"J50","tails":[["J50",44]]},"PE52":{"car":"エルグランド","cars":[["日産 エルグランド",7]],"cols":[],"mk":"日産","tail":"E52","tails":[["E52",4],["S2 PNE52 TE52 TNE52",3]]},"PNE52":{"car":"エルグランド","cars":[["日産 エルグランド",2]],"cols":[],"mk":"日産","tail":"PE52 TE52 TNE52","tails":[["PE52 TE52 TNE52",2]]},"PV36":{"car":"スカイライン","cars":[["日産 スカイライン",4]],"cols":[],"mk":"日産","tail":"V36","tails":[["V36",4]]},"PY50":{"car":"フーガ","cars":[["日産 フーガ",76]],"cols":[["C31",6]],"mk":"日産","tail":"Y50","tails":[["Y50",56],["Y51",5],["C31 Y50",5],["Y51 Y50",2],["Y50 KY51",2]]},"QNC21":{"car":"Bb","cars":[["トヨタ Bb",4]],"cols":[["X07",4]],"mk":"トヨタ","tail":"","tails":[]},"RB1":{"car":"オデッセイ","cars":[["ホンダ オデッセイ",3]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"RB3":{"car":"オデッセイ","cars":[["ホンダ オデッセイ",28]],"cols":[],"mk":"ホンダ","tail":"J0","tails":[["J0",2]]},"RCH41":{"car":"レジアス","cars":[["トヨタ レジアス",53],["トヨタ ツーリング ハイエース 後期",2]],"cols":[["2FZ",3],["5P",1]],"mk":"トヨタ","tail":"","tails":[]},"RCH41W":{"car":"レジアス","cars":[["トヨタ レジアス",31]],"cols":[["2FZ",2]],"mk":"トヨタ","tail":"RCH47W","tails":[["RCH47W",3]]},"RL1":{"car":"ラグレイト","cars":[["ホンダ ラグレイト",7]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"RR5":{"car":"エリシオン","cars":[["ホンダ エリシオン",119]],"cols":[],"mk":"ホンダ","tail":"RR6","tails":[["RR6",4],["KB1",2]]},"S321V":{"car":"ハイゼットカーゴ","cars":[["ダイハツ ハイゼットカーゴ",2]],"cols":[],"mk":"ダイハツ","tail":"","tails":[]},"SE3P":{"car":"RX-8","cars":[["マツダ RX-8",12]],"cols":[],"mk":"マツダ","tail":"","tails":[]},"SH9":{"car":"フォレスター","cars":[["スバル フォレスター",25]],"cols":[],"mk":"スバル","tail":"","tails":[]},"SXE10":{"car":"アルテッツァ ALTEZZA","cars":[["トヨタ アルテッツァ ALTEZZA",6]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"SXV20":{"car":"マークIIクオリス","cars":[["トヨタ マークIIクオリス",6]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"TB17":{"car":"NISSAN シルフィ","cars":[["日産 シルフィ",11]],"cols":[],"mk":"日産","tail":"K23","tails":[["K23",14]]},"TT2":{"car":"サンバー","cars":[["スバル サンバー",2]],"cols":[],"mk":"スバル","tail":"","tails":[]},"UC1":{"car":"インスパイア","cars":[["ホンダ インスパイア",88]],"cols":[],"mk":"ホンダ","tail":"T02","tails":[["T02",2]]},"V75":{"car":"パジェロ","cars":[["三菱 パジェロ",2]],"cols":[],"mk":"三菱","tail":"V78","tails":[["V78",2]]},"VCH10":{"car":"グランドハイエース","cars":[["トヨタ グランドハイエース",212]],"cols":[["5P",6],["2FW",4]],"mk":"トヨタ","tail":"","tails":[]},"Y51":{"car":"フーガ","cars":[["日産 フーガ",5]],"cols":[],"mk":"日産","tail":"","tails":[]},"YA9":{"car":"エクシーガ EXIGA","cars":[["スバル エクシーガ EXIGA",65],["スバル エクシーガ",12],["スバル EXIGA エクシーガ",3]],"cols":[["9P",2],["37J",1]],"mk":"スバル","tail":"YA5","tails":[["YA5",14]]},"YD1":{"car":"HONDA MDX","cars":[["ホンダ HONDA MDX",4],["ホンダ MDX",2]],"cols":[],"mk":"ホンダ","tail":"","tails":[]},"ZC6":{"car":"BRZ","cars":[["スバル BRZ",284]],"cols":[["02C",9],["86",7],["PAF",4]],"mk":"スバル","tail":"ZN6","tails":[["ZN6",253]]},"ZGE20":{"car":"ウィッシュ","cars":[["トヨタ ウィッシュ",2]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"ZGM10":{"car":"アイシス","cars":[["トヨタ アイシス",7]],"cols":[],"mk":"トヨタ","tail":"","tails":[]},"ZN6":{"car":"86","cars":[["トヨタ 86",1166]],"cols":[["61K",28],["C7P",22],["D6S",20],["D4S",20],["E8H",11],["G1U",10]],"mk":"トヨタ","tail":"ZC6","tails":[["ZC6",1238]]},"ZNE10":{"car":"ウィッシュ","cars":[["トヨタ ウィッシュ",114],["トヨタ WISH ウィッシュ",4]],"cols":[["1F7",4]],"mk":"トヨタ","tail":"ZNE14 ANE10 ANE11","tails":[["ZNE14 ANE10 ANE11",22],["T80",2]]},"ZNM10":{"car":"アイシス","cars":[["トヨタ アイシス",3]],"cols":[],"mk":"トヨタ","tail":"ZGM15","tails":[]},"ZRE152":{"car":"カローラ ルミオン","cars":[["トヨタ カローラ ルミオン",5]],"cols":[["209",1]],"mk":"トヨタ","tail":"NZE151","tails":[["NZE151",3]]},"ZRE152N":{"car":"カローラ ルミオン","cars":[["トヨタ カローラ ルミオン",67],["トヨタ ルミオン",9]],"cols":[["209",6]],"mk":"トヨタ","tail":"ZRE154 NZE151","tails":[["ZRE154 NZE151",26],["ZRE154",9],["NZE152N ZRE154N",5],["ZRE152 NZE151",3]]},"ZRE154N":{"car":"カローラ ルミオン","cars":[["トヨタ カローラ ルミオン",18]],"cols":[["1F7",2]],"mk":"トヨタ","tail":"ZRE152 NZE151","tails":[["ZRE152 NZE151",5],["ZRE154 NZE151",3],["ZRE152",3],["NZE152N ZRE152",3]]},"ZZT231":{"car":"セリカ","cars":[["トヨタ セリカ",3]],"cols":[],"mk":"トヨタ","tail":"ZZT230","tails":[["ZZT230",2]]}};      // 過去の出品タイトルから作った「型式 → 社名・車名・末尾の型式」
+  function uiMode() { return (W.ui === 'easy' || W.ui === 'support') ? W.ui : 'classic'; }
+  function newUI() { return uiMode() !== 'classic'; }
+  function carsOn() { return uiMode() === 'support'; }
+  function supportOn() { return W.support === true || carsOn(); }
+  function ruleFor(model) { var u = (W.rules || {})[model], d = RULES_SEED[model]; if (!u) return d || null; return Object.assign({}, d || {}, u); }      // 直したルール＋過去の出品からの候補（tails・cars・cols）
+  // 車の情報（出品サポート）。この番号の型式から、最近使った同じ型式の車（年式・走行・色）か、型式のルールで作る
+  function vcOf(m) {
+    if (!carsOn() || !m.model) return null;
+    if (!m.vc || m.vc.model !== m.model) {
+      var rc = (W.cars || []).filter(function (c) { return c.model === m.model; })[0];
+      var r = ruleFor(m.model) || {};
+      var v = rc ? JSON.parse(JSON.stringify(rc)) : { model: m.model, mk: '', car: '', tail: '', year: '', km: '', color: '' };
+      if (!v.mk) v.mk = r.mk || '';
+      if (!v.car) v.car = r.car || '';
+      if (!v.tail) v.tail = r.tail || '';
+      v.model = m.model; m.vc = v;
+    }
+    return m.vc;
+  }
+  function saveCar(m) {      // 直した社名・車名・末尾の型式は、その型式のルールとして覚える。最近の車にも入れる
+    var v = m.vc; if (!v || !m.model) return;
+    W.rules = W.rules || {}; W.rules[m.model] = { mk: v.mk, car: v.car, tail: v.tail };
+    var a = (W.cars || []).filter(function (c) { return !(c.model === v.model && c.year === v.year); });
+    a.unshift(JSON.parse(JSON.stringify(v))); W.cars = a.slice(0, 8);
+    saveWords();
+  }
+  function carText(v, model) { return v ? [[v.mk, v.car].filter(Boolean).join(' '), model, v.year, v.color].filter(Boolean).join('　') : ''; }
   function dataText(id, m) {
     var cl = function (s) { return String(s).replace(/\|/g, '｜').replace(/\s+/g, ' ').trim(); };
     var memoLines = lines(m.tokens).concat(String(m.note || '').split(String.fromCharCode(10))).map(cl).filter(Boolean).join(SEP);
-    return ['YKS1', id, cl(m.model || ''), cl(m.wh || ''), cl(m.size || ''), memoLines].join('|');
+    var out = ['YKS1', id, cl(m.model || ''), cl(m.wh || ''), cl(m.size || ''), memoLines];
+    var vc = vcOf(m);      // 車の情報は、状態の後ろに「名前=値」で足す（今の読み方は先頭の6つしか使わないので、影響しない）
+    if (vc) out.push('mk=' + cl(vc.mk), 'car=' + cl(vc.car), 'tail=' + cl(vc.tail), 'yr=' + cl(vc.year), 'km=' + cl(vc.km), 'col=' + cl(vc.color));
+    return out.join('|');
   }
   function utf8Bytes(str) {      // QRライブラリの標準は1文字1バイトで、日本語が壊れるため、UTF-8にする
     var out = [], b;
@@ -2800,6 +2982,8 @@ var qrcode = function() {
     }
     document.body.classList.toggle('support', supportOn() && !onSep);
     if (supportOn() && !onSep) renderQR2(dataText(id, m)); else $('qrcode2').innerHTML = '';
+    var cl2 = $('carline'); cl2.hidden = !(carsOn() && !onSep);
+    if (!cl2.hidden) { var cv = vcOf(m); cl2.textContent = cv ? carText(cv, m.model) : (m.model ? m.model : '車を選ぶ'); cl2.className = cv ? '' : 'none'; }
 
     // いつもの画面の型式・倉庫・サイズは押すと、その選ぶところが開く
     var meta = $('meta');
@@ -2965,6 +3149,7 @@ var qrcode = function() {
     return function (w) {
       var m = memo(cur());
       m[kind] = (m[kind] === w) ? '' : w;
+      if (kind === 'model') m.vc = null;      // 型式を変えたら、車の情報は作り直す（ルールか最近の車から）
       remember(kind, m[kind]);
       render();
     };
@@ -3002,12 +3187,15 @@ var qrcode = function() {
     hot.addEventListener('click', function () { $('words').scrollTop = 0; });
     jump.appendChild(hot);
     back.appendChild(jump); back.appendChild(quick);
+    var allBtn = document.createElement('button'); allBtn.id = 'allBtn'; allBtn.textContent = 'すべての言葉を見る';
+    allBtn.addEventListener('click', function () { allWords = true; document.body.classList.add('showall'); });
+    back.appendChild(allBtn);
     W.groups.forEach(function (g, gi) {
       var grid = makeGrid(g.words, '', addToken);
       // 足した言葉は、そのまま今の状態にも入れる
       var sec = withAdd(section(g.name, grid), grid, 'quickWord' + gi, '「' + g.name + '」に言葉を追加',
         function (v) { if (g.words.indexOf(v) < 0) g.words.push(v); insertTokens([v]); });
-      back.appendChild(sec);
+      sec.classList.add('grp'); back.appendChild(sec);
       var jb = document.createElement('button'); jb.textContent = g.name;
       jb.addEventListener('click', function () { jumpTo(sec); });
       jump.appendChild(jb);
@@ -3073,6 +3261,7 @@ var qrcode = function() {
     }
     if (ws.length) q.appendChild(section('よく使う言葉', makeGrid(ws, '', addToken)));
     $('jumpHot').hidden = !(ls.length || ws.length);
+    document.body.classList.toggle('showall', allWords || !(ls.length || ws.length));
     buildRecent();
   }
 
@@ -3099,11 +3288,11 @@ var qrcode = function() {
     });
   }
 
-  function openSheet(front, key) {
+  function openSheet(front, key, tab) {
     selLine = null; editLine = null;
     buildQuick();
     $('stateSheet').hidden = false;
-    showTab(!!front);
+    if (newUI()) showTab2(tab || (front ? 'place' : 'state')); else showTab(!!front);
     if (key) {
       var el = document.querySelector('#paneFront [data-key="' + key + '"]');
       if (el) { var jf = $('jumpF'); $('words').scrollTop = el.offsetTop - (jf ? jf.offsetHeight : 0) - 4; }
@@ -3201,7 +3390,7 @@ var qrcode = function() {
     var body = $('setBody'), keep = body.scrollTop;
     body.innerHTML = '';
     $('setTabWords').setAttribute('aria-selected', setTab === 'words');
-    $('setTabModels').setAttribute('aria-selected', setTab === 'models');
+    $('setTabModels').setAttribute('aria-selected', setTab === 'models'); $('setTabCars').setAttribute('aria-selected', setTab === 'cars');
     if (setTab === 'words') {
       body.appendChild(note('↑↓で並べ替え、×を2回押すと消えます。入力済みのメモはそのまま残ります。'));
       W.groups.forEach(function (g, gi) {
@@ -3223,6 +3412,21 @@ var qrcode = function() {
         armOnce(rs, 'もう一度押すと最初の一覧に戻ります', function () { W.groups = defaultGroups(); changed(); });
       });
       body.appendChild(rs);
+    } else if (setTab === 'cars') {
+      body.appendChild(note('型式を選ぶと、ここの社名・車名・末尾の型式が自動で入ります。直すと次から使われます（過去の出品タイトルから作った初期値です）。'));
+      var keys = {}; W.models.forEach(function (k) { keys[k] = 1; }); Object.keys(W.rules || {}).forEach(function (k) { keys[k] = 1; });
+      Object.keys(keys).sort(function (a, b) { return a.localeCompare(b, 'en', { numeric: true }); }).forEach(function (mdl) {
+        var r = ruleFor(mdl) || { mk: '', car: '', tail: '' };
+        var row = document.createElement('div'); row.className = 'rrow';
+        var h = document.createElement('b'); h.textContent = mdl; row.appendChild(h);
+        var vals = { mk: r.mk, car: r.car, tail: r.tail };
+        [['mk', '社名'], ['car', '車名'], ['tail', '末尾の型式']].forEach(function (f) {
+          var i = document.createElement('input'); i.type = 'text'; i.value = vals[f[0]] || ''; i.placeholder = f[1]; i.setAttribute('aria-label', mdl + 'の' + f[1]);
+          i.addEventListener('change', function () { vals[f[0]] = i.value.trim(); W.rules = W.rules || {}; W.rules[mdl] = { mk: vals.mk || '', car: vals.car || '', tail: vals.tail || '' }; saveWords(); });
+          row.appendChild(i);
+        });
+        body.appendChild(row);
+      });
     } else {
       body.appendChild(note('アルファベット順に自動で並びます。×を2回押すと消えます。'));
       var list = document.createElement('div'); list.className = 'wl';
@@ -3285,7 +3489,8 @@ var qrcode = function() {
           (W[k] || []).concat(out[k] || []).forEach(function (v) { if (a.indexOf(v) < 0) a.push(v); });
           out[k] = a.slice(0, 4);
         });
-        out.carry = W.carry; out.carryWh = W.carryWh; out.sepA = W.sepA; out.support = W.support;
+        out.carry = W.carry; out.carryWh = W.carryWh; out.sepA = W.sepA; out.support = W.support; out.ui = W.ui;
+        out.rules = Object.assign({}, out.rules || {}, W.rules || {}); out.cars = W.cars || out.cars;
         try { localStorage.setItem(WORDS_KEY, JSON.stringify(out)); } catch (e) {}
         location.reload();
       });
@@ -3310,7 +3515,7 @@ var qrcode = function() {
     $('carryChk').checked = W.carry !== false;
     $('carryWhChk').checked = W.carryWh === true;
     $('supChk').checked = supportOn();
-    drawMode();
+    drawMode(); drawUI();
     $('settings').hidden = false; renderSettings();
   });
   $('carryChk').addEventListener('change', function () { W.carry = this.checked; saveWords(); rebuild(); });
@@ -3326,11 +3531,160 @@ var qrcode = function() {
   function setMode(sep) { buzz(); W.sepA = sep; if (S) S.onSep = false; saveWords(); drawMode(); rebuild(); }
   $('modeNormal').addEventListener('click', function () { setMode(false); });
   $('modeSep').addEventListener('click', function () { setMode(true); });
+  function drawUI() {
+    var u = uiMode();
+    [['uiClassic', 'classic'], ['uiEasy', 'easy'], ['uiSupport', 'support']].forEach(function (k) { $(k[0]).setAttribute('aria-selected', u === k[1]); });
+    $('uiNote').textContent = u === 'classic' ? 'これまでの画面そのままです。' : u === 'easy' ? '新しい見た目。状態は「よく使う」だけを出し、タブで分けます（すべての言葉は、ボタンで開けます）。'
+      : '「かんたん」に加えて、車タブ（社名・車名・末尾の型式が型式から自動で入る）と、データQR、撮影画面の車の行が出ます。';
+    $('supChk').checked = supportOn(); $('supChk').disabled = carsOn();
+  }
+  function setUI(u) { buzz(); W.ui = u; saveWords(); applyUI(); drawUI(); rebuild(); }
+  $('uiClassic').addEventListener('click', function () { setUI('classic'); });
+  $('uiEasy').addEventListener('click', function () { setUI('easy'); });
+  $('uiSupport').addEventListener('click', function () { setUI('support'); });
   $('setClose').addEventListener('click', function () { $('settings').hidden = true; });
   $('setTabWords').addEventListener('click', function () { setTab = 'words'; $('setBody').scrollTop = 0; renderSettings(); });
   $('setTabModels').addEventListener('click', function () { setTab = 'models'; $('setBody').scrollTop = 0; renderSettings(); });
+  $('setTabCars').addEventListener('click', function () { setTab = 'cars'; $('setBody').scrollTop = 0; renderSettings(); });
 
+  // 新しい画面（かんたん／出品サポート）のタブ：状態｜型式・場所｜車｜メモ
+  var curTab = 'state', allWords = false;
+  function showTab2(name) {
+    curTab = name;
+    var sh = document.querySelector('#stateSheet .sheet'); if (sh) sh.setAttribute('data-tab', name);
+    $('paneBack').hidden = name !== 'state'; $('paneFront').hidden = name !== 'place'; $('paneCar').hidden = name !== 'car';
+    $('words').hidden = (name === 'memo');
+    if (name === 'car') buildCar();
+    Array.prototype.forEach.call($('tabsNew').children, function (b) { b.setAttribute('aria-selected', b.dataset.t === name); });
+    $('words').scrollTop = 0;
+    if (name === 'memo') setTimeout(function () { try { $('note').focus(); } catch (e) {} }, 60);
+  }
+  function applyUI() {
+    var u = uiMode(), b = document.body;
+    b.classList.toggle('ui-new', u !== 'classic'); b.classList.toggle('ui-easy', u === 'easy'); b.classList.toggle('ui-support', u === 'support');
+    $('tabs').hidden = u !== 'classic'; $('tabsNew').hidden = u === 'classic';
+    if (u === 'classic') { $('paneCar').hidden = true; $('words').hidden = false; var sh = document.querySelector('#stateSheet .sheet'); if (sh) sh.removeAttribute('data-tab'); }
+    var names = u === 'support' ? [['state', '状態'], ['place', '型式・場所'], ['car', '車'], ['memo', 'メモ']] : [['state', '状態'], ['place', '型式・場所'], ['memo', 'メモ']];
+    var t = $('tabsNew'); t.innerHTML = ''; t.style.gridTemplateColumns = 'repeat(' + names.length + ', 1fr)';
+    names.forEach(function (n) {
+      var bt = document.createElement('button'); bt.textContent = n[1]; bt.dataset.t = n[0]; bt.setAttribute('role', 'tab');
+      bt.addEventListener('click', function () { buzz(); showTab2(n[0]); });
+      t.appendChild(bt);
+    });
+    var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', u === 'classic' ? '#ffffff' : '#f6f7fb');
+  }
+  // 「車」タブ：型式から社名・車名・末尾の型式が自動で入る。年式・走行・色番はこの車に1回だけ入れる
+  var padOpen = '';
+  function buildCar() {
+    var box = $('paneCar'), m = memo(cur()), v = vcOf(m), sc = $('words').scrollTop;
+    box.innerHTML = '';
+    var r = (m.model && ruleFor(m.model)) || {};
+    function lab(txt, extra) { var d = document.createElement('div'); d.className = 'clab'; d.textContent = txt; if (extra) { var s = document.createElement('span'); s.className = 'autotag'; s.textContent = extra; d.appendChild(s); } return d; }
+    function commit() { render(); saveCar(m); buildCar(); }
+    function btn(txt, cls, fn) { var b = document.createElement('button'); b.type = 'button'; b.textContent = txt; if (cls) b.className = cls; b.addEventListener('click', function () { buzz(); fn(); }); return b; }
+    function chips(list, curVal, pick) {      // list: [[値, 表示, 件数]]
+      var d = document.createElement('div'); d.className = 'cchips';
+      list.forEach(function (x) {
+        var b = btn(x[1] + (x[2] ? '' : ''), curVal === x[0] ? 'on' : '', function () { pick(x[0]); });
+        if (x[2]) { var n = document.createElement('small'); n.textContent = x[2] + '件'; b.appendChild(n); }
+        d.appendChild(b);
+      });
+      return d;
+    }
+    function field(txt, key, ph, extra) {
+      var w = document.createElement('div'); w.className = 'cfield'; w.appendChild(lab(txt, extra));
+      var i = document.createElement('input'); i.type = 'text'; i.value = v[key] || ''; i.placeholder = ph || ''; i.setAttribute('autocomplete', 'off');
+      i.addEventListener('input', function () { v[key] = i.value; render(); });
+      i.addEventListener('change', function () { saveCar(m); buildCar(); });
+      w.appendChild(i); return w;
+    }
+    function shown(txt, ph, key, onTap) {      // 押すと下に入力パネルが開く（キーボードを出さない）
+      var w = document.createElement('div'); w.className = 'cfield'; w.appendChild(lab(txt));
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pshow' + (padOpen === key ? ' open' : '') + (v[key === 'year' ? 'year' : 'km'] ? '' : ' ph');
+      b.textContent = (key === 'km' ? (v.km ? Number(v.km).toLocaleString() + ' km' : '') : (v.year ? yearLabel(v.year) : '')) || ph;
+      b.addEventListener('click', function () { buzz(); padOpen = padOpen === key ? '' : key; buildCar(); });
+      w.appendChild(b); return w;
+    }
+    function yearLabel(y) { var mm = /^([HRS])(\d{1,2})(?:\.(\d{1,2}))?$/.exec(y || ''); if (!mm) return y; return ({ H: '平成', R: '令和', S: '昭和' })[mm[1]] + mm[2] + '年' + (mm[3] ? mm[3] + '月' : ''); }
+    function yearPad() {
+      var d = document.createElement('div'); d.className = 'pad';
+      var mm = /^([HRS])(\d{1,2})(?:\.(\d{1,2}))?$/.exec(v.year || ''), era = mm ? mm[1] : 'H', yr = mm ? mm[2] : '', mo = (mm && mm[3]) ? mm[3] : '';
+      function set(e, y, mo2) { v.year = y ? e + y + (mo2 ? '.' + mo2 : '') : ''; commit(); }
+      var er = document.createElement('div'); er.className = 'pgrid p3';
+      [['H', '平成'], ['R', '令和'], ['S', '昭和']].forEach(function (e) { er.appendChild(btn(e[1], era === e[0] ? 'on' : '', function () { set(e[0], e[0] === era ? yr : '', mo); if (!yr) { v.year = ''; } })); });
+      d.appendChild(er);
+      var rng = era === 'H' ? [1, 31] : era === 'R' ? [1, 8] : [45, 64], g = document.createElement('div'); g.className = 'pgrid';
+      for (var y = rng[0]; y <= rng[1]; y++) (function (y) { g.appendChild(btn(String(y), String(y) === yr ? 'on' : '', function () { set(era, String(y), mo); })); })(y);
+      d.appendChild(lab('年'));
+      d.appendChild(g);
+      d.appendChild(lab('月（わかれば）'));
+      var mg = document.createElement('div'); mg.className = 'pgrid';
+      for (var k = 1; k <= 12; k++) (function (k) { mg.appendChild(btn(String(k), String(k) === mo ? 'on' : '', function () { if (!yr) return; set(era, yr, String(k) === mo ? '' : String(k)); })); })(k);
+      d.appendChild(mg);
+      return d;
+    }
+    function kmPad() {
+      var d = document.createElement('div'); d.className = 'pad';
+      var g = document.createElement('div'); g.className = 'pgrid p3 keys';
+      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '000', '0', '⌫'].forEach(function (k) {
+        g.appendChild(btn(k, k === '⌫' ? 'soft' : '', function () {
+          var s = String(v.km || '');
+          if (k === '⌫') s = s.slice(0, -1); else if (s.length + k.length <= 7 && !(s === '' && (k === '0' || k === '000'))) s += k;
+          v.km = s; commit();
+        }));
+      });
+      d.appendChild(g);
+      d.appendChild(btn('クリア', 'soft wide', function () { v.km = ''; commit(); }));
+      return d;
+    }
+    if (!v) {
+      var e = document.createElement('div'); e.className = 'cempty';
+      e.innerHTML = '<b>先に型式を選んでください</b><span>型式を選ぶと、社名・車名・末尾の型式と、色の候補が出ます。</span>';
+      e.appendChild(btn('型式を選ぶ', 'cgo', function () { showTab2('place'); })); box.appendChild(e);
+    } else {
+      var head = document.createElement('div'); head.className = 'chead';
+      head.innerHTML = '<span class="cmodel"></span><span class="csub">この番号の車</span>'; head.firstChild.textContent = m.model; box.appendChild(head);
+      var pair = document.createElement('div'); pair.className = 'cpair';
+      pair.appendChild(field('社名', 'mk', '日産', '自動')); pair.appendChild(field('車名', 'car', 'フーガ', '自動'));
+      box.appendChild(pair);
+      if ((r.cars || []).length > 1) box.appendChild(chips((r.cars || []).map(function (c) { return [c[0], c[0], c[1]]; }), [v.mk, v.car].filter(Boolean).join(' '), function (x) {
+        var p = x.split(' '); v.mk = p[0]; v.car = p.slice(1).join(' '); commit(); }));
+      box.appendChild(field('末尾の型式（検索用）', 'tail', 'Y51 KY51', '過去の出品から'));
+      var tl = (r.tails || []).map(function (t) { return [t[0], t[0], t[1]]; });
+      if (v.tail && !tl.some(function (x) { return x[0] === v.tail; })) tl.unshift([v.tail, v.tail, 0]);
+      if (tl.length) box.appendChild(chips(tl, v.tail, function (x) { v.tail = x; commit(); }));
+      var hint = document.createElement('p'); hint.className = 'chint'; hint.textContent = '選ぶか直すと、この型式のルールとして覚えます（設定の「車のルール」でも直せます）。'; box.appendChild(hint);
+      box.appendChild(shown('年式', 'タップして選ぶ', 'year'));
+      if (padOpen === 'year') box.appendChild(yearPad());
+      box.appendChild(shown('走行距離', 'タップして入力', 'km'));
+      if (padOpen === 'km') box.appendChild(kmPad());
+      box.appendChild(lab('カラー番号', 'この型式の過去の出品から'));
+      var cl = (r.cols || []).map(function (c) { return [c[0], c[0], c[1]]; });
+      (W.cars || []).forEach(function (c) { if (c.model === m.model && c.color && !cl.some(function (x) { return x[0] === c.color; })) cl.unshift([c.color, c.color, 0]); });
+      if (v.color && !cl.some(function (x) { return x[0] === v.color; })) cl.unshift([v.color, v.color, 0]);
+      cl.push(['不明', '不明', 0]);
+      box.appendChild(chips(cl, v.color, function (x) { v.color = (v.color === x) ? '' : x; commit(); }));
+      var ci = document.createElement('div'); ci.className = 'cfield';
+      var inp = document.createElement('input'); inp.type = 'text'; inp.value = v.color || ''; inp.placeholder = '候補にない色番はここに入力'; inp.setAttribute('autocomplete', 'off');
+      inp.addEventListener('input', function () { v.color = inp.value; render(); });
+      inp.addEventListener('change', function () { saveCar(m); buildCar(); });
+      ci.appendChild(inp); box.appendChild(ci);
+    }
+    var cars = (W.cars || []).filter(function (c) { return !(m.model && c.model === m.model && v && c.year === v.year); });
+    box.appendChild(lab('別の車に切り替える'));
+    var list = document.createElement('div'); list.className = 'cars';
+    cars.slice(0, 5).forEach(function (c) {
+      var b = document.createElement('button'); b.textContent = carText(c, c.model) + (c.km ? '　' + Number(String(c.km).replace(/\D/g, '') || 0).toLocaleString() + 'km' : '');
+      b.addEventListener('click', function () { buzz(); m.model = c.model; m.vc = JSON.parse(JSON.stringify(c)); remember('model', c.model); render(); buildCar(); });
+      list.appendChild(b);
+    });
+    var none = document.createElement('button'); none.className = 'none'; none.textContent = '車なし（部品だけ）';
+    none.addEventListener('click', function () { buzz(); m.model = ''; m.vc = null; render(); buildCar(); });
+    list.appendChild(none); box.appendChild(list);
+    $('words').scrollTop = sc;
+  }
   function showTab(front) {
+    $('paneCar').hidden = true;
     $('paneFront').hidden = !front; $('paneBack').hidden = front;
     $('tabFront').setAttribute('aria-selected', front); $('tabBack').setAttribute('aria-selected', !front);
     $('words').scrollTop = 0;
@@ -3339,6 +3693,7 @@ var qrcode = function() {
   $('tabFront').addEventListener('click', function () { showTab(true); });
 
   $('stateBtn').addEventListener('click', function () { openSheet(false); });
+  $('carline').addEventListener('click', function () { openSheet(false, null, 'car'); });
   $('memo').addEventListener('click', function () { openSheet(false); });
   $('doneBtn').addEventListener('click', function () {
     $('note').blur(); $('stateSheet').hidden = true; editLine = null; selLine = null; render();
@@ -3396,7 +3751,7 @@ var qrcode = function() {
     clearTimeout(clearTimer);
     b.classList.remove('arm'); b.textContent = '全消し';
     keepForUndo('全部消しました');
-    var m = memo(cur()); m.tokens = []; m.model = ''; m.wh = ''; m.size = ''; m.note = '';
+    var m = memo(cur()); m.tokens = []; m.model = ''; m.wh = ''; m.size = ''; m.note = ''; m.vc = null;
     editLine = null; selLine = null;
     $('note').value = '';
     render();
@@ -3529,6 +3884,7 @@ var qrcode = function() {
     S.custom.forEach(function (m) { if (W.models.indexOf(m) < 0) W.models.push(m); });
     delete S.custom; saveWords();
   }
+  applyUI();
   buildPanels();
   if (S && S.generated && S.generated.length) {
     S.memos = S.memos || {};
