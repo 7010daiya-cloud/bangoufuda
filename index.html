@@ -223,33 +223,33 @@
   #resetBtn.arm { color: var(--accent); font-weight: bold; }
 
   /* =====================================================================
-     新しい見た目（かんたん／出品サポート）。設定の「使い方」で選んだときだけ body.ui-new が付く。
-     「いつもの」は上のCSSのまま（ほかの作業者の画面は変わらない）
+     新しい見た目（全部の使い方で共通）。body.ui-skin は常に付く＝見た目の統一。
+     body.ui-new（かんたん／出品サポート）は、タブ式のシートなど「つくり」の違いだけ
      ===================================================================== */
   #carline { display: none; }
   .seg.s3 { grid-template-columns: 1fr 1fr 1fr; }
   #allBtn { display: none; }
   #paneCar .cempty, .rrow { }
 
-  body.ui-new {
+  body.ui-skin {
     --bg: #f6f7fb; --ink: #0f172a; --muted: #64748b; --soft: #eef1f6; --line: #e2e8f0;
     --accent: #5b5bf5; --accent-soft: #eef0ff; --accent-ink: #3f3fd1; --dark: #334155;
     --dim: rgba(15, 23, 42, 0.45); --card: #ffffff; --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     font-family: 'Inter', 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  body.ui-new button:focus-visible, body.ui-new input:focus-visible, body.ui-new textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  body.ui-skin button:focus-visible, body.ui-skin input:focus-visible, body.ui-skin textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   /* 撮影する画面 */
-  body.ui-new #mode-label { font-size: 11px; letter-spacing: .06em; color: var(--muted); padding-top: 12px; }
-  body.ui-new #progress { margin-top: 6px; padding: 3px 12px; font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
-  body.ui-new #number { font-size: 76px; font-weight: 700; letter-spacing: -.02em; padding-top: 8px; }
-  body.ui-new #meta { gap: 8px; padding-top: 6px; }
-  body.ui-new #meta button { font-size: 15px; font-weight: 600; border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; background: var(--card); box-shadow: 0 1px 2px rgba(15, 23, 42, .06); }
-  body.ui-new #qrcode img, body.ui-new #qrcode2 img { background: #ffffff; border-radius: 18px; border: 1px solid var(--line); box-shadow: var(--shadow); }
-  body.ui-new #memo { font-size: 24px; font-weight: 700; color: var(--ink); }
-  body.ui-new #memo .free { font-weight: 500; color: var(--dark); }
-  body.ui-new.sep #stage { background: repeating-linear-gradient(135deg, var(--bg) 0 18px, #eceff6 18px 36px); }
+  body.ui-skin #mode-label { font-size: 11px; letter-spacing: .06em; color: var(--muted); padding-top: 12px; }
+  body.ui-skin #progress { margin-top: 6px; padding: 3px 12px; font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
+  body.ui-skin #number { font-size: 76px; font-weight: 700; letter-spacing: -.02em; padding-top: 8px; }
+  body.ui-skin #meta { gap: 8px; padding-top: 6px; }
+  body.ui-skin #meta button { font-size: 15px; font-weight: 600; border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; background: var(--card); box-shadow: 0 1px 2px rgba(15, 23, 42, .06); }
+  body.ui-skin #qrcode img, body.ui-skin #qrcode2 img { background: #ffffff; border-radius: 18px; border: 1px solid var(--line); box-shadow: var(--shadow); }
+  body.ui-skin #memo { font-size: 24px; font-weight: 700; color: var(--ink); }
+  body.ui-skin #memo .free { font-weight: 500; color: var(--dark); }
+  body.ui-skin.sep #stage { background: repeating-linear-gradient(135deg, var(--bg) 0 18px, #eceff6 18px 36px); }
 
   /* 車の行（出品サポート） */
   body.ui-support #carline {
@@ -261,48 +261,48 @@
   body.ui-support #carline.none { color: var(--muted); background: var(--card); border-style: dashed; border-color: #cbd5e1; }
 
   /* 下の操作 */
-  body.ui-new #subrow { gap: 8px; padding-top: 10px; }
-  body.ui-new #stateBtn { font-size: 15px; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid #c7cbff; border-radius: 14px; padding: 14px 0; }
-  body.ui-new #setBtn, body.ui-new #jumpToggle { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 0; }
-  body.ui-new #btnrow button { font-size: 19px; font-weight: 700; padding: 18px 0; border-radius: 16px; }
-  body.ui-new #prevBtn { background: var(--card); border: 1px solid var(--line); color: var(--dark); }
-  body.ui-new #nextBtn { background: var(--accent); box-shadow: 0 8px 20px rgba(91, 91, 245, .35); }
-  body.ui-new #nextBtn:active { background: var(--accent-ink); }
+  body.ui-skin #subrow { gap: 8px; padding-top: 10px; }
+  body.ui-skin #stateBtn { font-size: 15px; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid #c7cbff; border-radius: 14px; padding: 14px 0; }
+  body.ui-skin #setBtn, body.ui-skin #jumpToggle { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 0; }
+  body.ui-skin #btnrow button { font-size: 19px; font-weight: 700; padding: 18px 0; border-radius: 16px; }
+  body.ui-skin #prevBtn { background: var(--card); border: 1px solid var(--line); color: var(--dark); }
+  body.ui-skin #nextBtn { background: var(--accent); box-shadow: 0 8px 20px rgba(91, 91, 245, .35); }
+  body.ui-skin #nextBtn:active { background: var(--accent-ink); }
 
   /* シート */
-  body.ui-new .overlay { background: var(--dim); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
-  body.ui-new .sheet { background: var(--bg); }
-  body.ui-new #stateSheet .sheet { border-radius: 26px 26px 0 0; gap: 10px; padding-top: 8px; box-shadow: 0 -8px 32px rgba(15, 23, 42, .18); }
-  body.ui-new #stateSheet .sheet::before { content: ''; flex: none; align-self: center; width: 42px; height: 5px; border-radius: 3px; background: #cbd5e1; margin-bottom: 2px; }
-  body.ui-new #sheetMeta button { font-size: 13px; font-weight: 600; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid #c7cbff; border-radius: 999px; padding: 6px 12px; }
-  body.ui-new #preview { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; font-size: 15px; }
-  body.ui-new #preview > div { border-bottom: 1px solid var(--soft); }
-  body.ui-new #preview .ln.sel { background: var(--soft); border-radius: 8px; }
-  body.ui-new #preview .ln.editing { background: var(--accent-soft); border-left-color: var(--accent); border-radius: 8px; }
-  body.ui-new #preview .nextln { color: var(--accent-ink); }
-  body.ui-new .lineAct button { border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
-  body.ui-new .lineAct button.del { background: #e11d48; border-color: #e11d48; }
-  body.ui-new #tools button { background: var(--card); border: 1px solid var(--line); border-radius: 12px; color: var(--dark); }
-  body.ui-new #sepBtn { background: var(--ink) !important; border-color: var(--ink) !important; color: #ffffff !important; }
-  body.ui-new #clearBtn.arm { background: #e11d48 !important; border-color: #e11d48 !important; }
-  body.ui-new .seg { background: var(--soft); border-radius: 14px; padding: 4px; }
-  body.ui-new .seg button { border-radius: 10px; font-size: 14px; min-height: 40px; }
-  body.ui-new .seg button[aria-selected="true"] { background: var(--card); color: var(--accent-ink); box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+  body.ui-skin .overlay { background: var(--dim); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+  body.ui-skin .sheet { background: var(--bg); }
+  body.ui-skin #stateSheet .sheet { border-radius: 26px 26px 0 0; gap: 10px; padding-top: 8px; box-shadow: 0 -8px 32px rgba(15, 23, 42, .18); }
+  body.ui-skin #stateSheet .sheet::before { content: ''; flex: none; align-self: center; width: 42px; height: 5px; border-radius: 3px; background: #cbd5e1; margin-bottom: 2px; }
+  body.ui-skin #sheetMeta button { font-size: 13px; font-weight: 600; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid #c7cbff; border-radius: 999px; padding: 6px 12px; }
+  body.ui-skin #preview { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; font-size: 15px; }
+  body.ui-skin #preview > div { border-bottom: 1px solid var(--soft); }
+  body.ui-skin #preview .ln.sel { background: var(--soft); border-radius: 8px; }
+  body.ui-skin #preview .ln.editing { background: var(--accent-soft); border-left-color: var(--accent); border-radius: 8px; }
+  body.ui-skin #preview .nextln { color: var(--accent-ink); }
+  body.ui-skin .lineAct button { border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+  body.ui-skin .lineAct button.del { background: #e11d48; border-color: #e11d48; }
+  body.ui-skin #tools button { background: var(--card); border: 1px solid var(--line); border-radius: 12px; color: var(--dark); }
+  body.ui-skin #sepBtn { background: var(--ink) !important; border-color: var(--ink) !important; color: #ffffff !important; }
+  body.ui-skin #clearBtn.arm { background: #e11d48 !important; border-color: #e11d48 !important; }
+  body.ui-skin .seg { background: var(--soft); border-radius: 14px; padding: 4px; }
+  body.ui-skin .seg button { border-radius: 10px; font-size: 14px; min-height: 40px; }
+  body.ui-skin .seg button[aria-selected="true"] { background: var(--card); color: var(--accent-ink); box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
   body.ui-new #tabsNew { display: grid; }
   body.ui-new #tabsNew[hidden] { display: none !important; }
-  body.ui-new #jump, body.ui-new #jumpF { background: var(--bg); }
-  body.ui-new #jump button, body.ui-new #jumpF button { border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--dark); }
-  body.ui-new #jump button.hot { color: var(--accent-ink); border-color: #c7cbff; background: var(--accent-soft); }
-  body.ui-new #quick h2 { color: var(--accent-ink); }
-  body.ui-new .sec h2 { font-size: 11px; color: var(--muted); }
-  body.ui-new .grid button { background: var(--card); border: 1px solid var(--line); border-radius: 12px; color: var(--ink); }
-  body.ui-new .grid button:active, body.ui-new .grid button.flash, body.ui-new .grid button.on { background: var(--accent); border-color: var(--accent); color: #ffffff; }
-  body.ui-new .grid button.add { background: transparent; border-style: dashed; }
-  body.ui-new .mapBtn { border: 1px solid #c7cbff; background: var(--accent-soft); color: var(--accent-ink); border-radius: 12px; }
-  body.ui-new .recent .lbl { color: var(--accent-ink); }
-  body.ui-new #doneBtn { background: var(--accent); border-radius: 16px; box-shadow: 0 8px 20px rgba(91, 91, 245, .3); }
-  body.ui-new #toast { background: var(--ink); border-radius: 14px; }
-  body.ui-new #toastUndo { background: var(--accent); }
+  body.ui-skin #jump, body.ui-skin #jumpF { background: var(--bg); }
+  body.ui-skin #jump button, body.ui-skin #jumpF button { border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--dark); }
+  body.ui-skin #jump button.hot { color: var(--accent-ink); border-color: #c7cbff; background: var(--accent-soft); }
+  body.ui-skin #quick h2 { color: var(--accent-ink); }
+  body.ui-skin .sec h2 { font-size: 11px; color: var(--muted); }
+  body.ui-skin .grid button { background: var(--card); border: 1px solid var(--line); border-radius: 12px; color: var(--ink); }
+  body.ui-skin .grid button:active, body.ui-skin .grid button.flash, body.ui-skin .grid button.on { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  body.ui-skin .grid button.add { background: transparent; border-style: dashed; }
+  body.ui-skin .mapBtn { border: 1px solid #c7cbff; background: var(--accent-soft); color: var(--accent-ink); border-radius: 12px; }
+  body.ui-skin .recent .lbl { color: var(--accent-ink); }
+  body.ui-skin #doneBtn { background: var(--accent); border-radius: 16px; box-shadow: 0 8px 20px rgba(91, 91, 245, .3); }
+  body.ui-skin #toast { background: var(--ink); border-radius: 14px; }
+  body.ui-skin #toastUndo { background: var(--accent); }
 
   /* シートのタブごとの見せ方 */
   body.ui-new #note { display: none; order: 4; flex: 1 1 auto; min-height: 140px; font-size: 17px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
@@ -3534,7 +3534,7 @@ var qrcode = function() {
   function drawUI() {
     var u = uiMode();
     [['uiClassic', 'classic'], ['uiEasy', 'easy'], ['uiSupport', 'support']].forEach(function (k) { $(k[0]).setAttribute('aria-selected', u === k[1]); });
-    $('uiNote').textContent = u === 'classic' ? 'これまでの画面そのままです。' : u === 'easy' ? '新しい見た目。状態は「よく使う」だけを出し、タブで分けます（すべての言葉は、ボタンで開けます）。'
+    $('uiNote').textContent = u === 'classic' ? 'これまでと同じ使い方です（見た目は、新しいデザインに統一しました）。' : u === 'easy' ? '新しい見た目。状態は「よく使う」だけを出し、タブで分けます（すべての言葉は、ボタンで開けます）。'
       : '「かんたん」に加えて、車タブ（社名・車名・末尾の型式が型式から自動で入る）と、データQR、撮影画面の車の行が出ます。';
     $('supChk').checked = supportOn(); $('supChk').disabled = carsOn();
   }
@@ -3561,7 +3561,7 @@ var qrcode = function() {
   }
   function applyUI() {
     var u = uiMode(), b = document.body;
-    b.classList.toggle('ui-new', u !== 'classic'); b.classList.toggle('ui-easy', u === 'easy'); b.classList.toggle('ui-support', u === 'support');
+    b.classList.add('ui-skin'); b.classList.toggle('ui-new', u !== 'classic'); b.classList.toggle('ui-easy', u === 'easy'); b.classList.toggle('ui-support', u === 'support');
     $('tabs').hidden = u !== 'classic'; $('tabsNew').hidden = u === 'classic';
     if (u === 'classic') { $('paneCar').hidden = true; $('words').hidden = false; var sh = document.querySelector('#stateSheet .sheet'); if (sh) sh.removeAttribute('data-tab'); }
     var names = u === 'support' ? [['state', '状態'], ['place', '型式・場所'], ['car', '車'], ['memo', 'メモ']] : [['state', '状態'], ['place', '型式・場所'], ['memo', 'メモ']];
@@ -3571,7 +3571,7 @@ var qrcode = function() {
       bt.addEventListener('click', function () { buzz(); showTab2(n[0]); });
       t.appendChild(bt);
     });
-    var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', u === 'classic' ? '#ffffff' : '#f6f7fb');
+    var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', '#f6f7fb');
   }
   // 「車」タブ：型式から社名・車名・末尾の型式が自動で入る。年式・走行・色番はこの車に1回だけ入れる
   var padOpen = '';
